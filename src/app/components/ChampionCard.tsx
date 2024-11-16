@@ -104,6 +104,13 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 						/>
 					)
 				})}
+				{
+					!hasModifications && (
+						<div className="group relative overflow-hidden rounded-xl border border-slate-200/10 bg-gradient-to-r p-3 from-gray-50 to-white">
+			this champion seem to be perfectly balanced, has everything should be...
+			</div>
+					)
+				}
 			</div>
 		</motion.div>
 	)
