@@ -8,6 +8,7 @@ import path from 'path'
 import { ChampionData } from '@/app/lib/types'
 import { PROXY_CONFIG } from '@/app/config/proxy'
 import { HttpService } from './http'
+import { ImageService } from '@/app/services/ImageService'
 
 interface WikiFetchOptions {
 	forceRefresh?: boolean
@@ -52,6 +53,36 @@ export class WikiDataService {
 			}
 		} catch (error) {
 			console.warn('WikiDataService: Failed to create cache directory', error)
+		}
+	}
+
+	/**
+	 * Ensure champion images are available and add image paths to champion data
+	 */
+	private async ensureChampionImages(
+		championData: ChampionData
+	): Promise<void> {
+		const imageService = ImageService.getInstance()
+		const championNames = Object.values(championData).map(
+			champion => champion.name
+		)
+
+		try {
+			const imagePaths = await imageService.ensureChampionImages(championNames)
+
+			// Add image paths to champion data
+			Object.values(championData).forEach(champion => {
+				const imagePath = imagePaths.get(champion.name)
+				if (imagePath) {
+					champion.splashArt = imagePath
+				}
+			})
+
+			console.info(
+				'WikiDataService: Successfully added splash art paths to champion data'
+			)
+		} catch (error) {
+			console.error('WikiDataService: Error ensuring champion images:', error)
 		}
 	}
 
@@ -102,6 +133,8 @@ export class WikiDataService {
 				championsCount: Object.keys(parsedData).length,
 				patchVersion,
 			})
+
+			await this.ensureChampionImages(parsedData)
 
 			return result
 		} catch (error) {
@@ -169,7 +202,6 @@ export class WikiDataService {
 		}
 
 		try {
-			// Recherche du bloc stats avec ARAM dedans
 			const statsBlockMatch = championBlock.match(/\["stats"\]\s*=\s*{([^}]+)}/)
 			if (!statsBlockMatch) {
 				console.debug('No stats block found')
@@ -178,11 +210,8 @@ export class WikiDataService {
 
 			const statsBlock = statsBlockMatch[1]
 
-			// Debug log pour voir le contenu du bloc stats
 			console.debug('Stats block found --:', statsBlock.substring(0, 2500))
-			console.log(statsBlock.length)
 
-			// Recherche spécifiquement le bloc ARAM dans les stats
 			const aramBlockMatch = statsBlock.match(/\["aram"\]\s*=\s*{([^}]+)/)
 			if (!aramBlockMatch) {
 				console.debug('No ARAM block found in stats')
@@ -194,7 +223,6 @@ export class WikiDataService {
 
 			const stats = { ...defaultStats }
 
-			// Extraction des valeurs avec une regex plus permissive
 			const statRegex = /\["?([^"\]]+)"?\]\s*=\s*([+-]?\d*\.?\d+)/g
 			let match
 
@@ -202,7 +230,6 @@ export class WikiDataService {
 				const [_, key, value] = match
 				console.debug('Found stat:', key, value)
 
-				// Normalisation des clés
 				const normalizedKey = key.trim().toLowerCase()
 				const mappedKey = this.mapStatKey(normalizedKey)
 
@@ -214,7 +241,6 @@ export class WikiDataService {
 				}
 			}
 
-			// Log si des modifications ont été trouvées
 			const hasModifications = Object.entries(stats).some(
 				([key, value]) => value !== 1
 			)
@@ -270,10 +296,8 @@ export class WikiDataService {
 				throw new Error('No Lua data found in wiki page')
 			}
 
-			// Log des premiers caractères pour vérifier la structure
 			console.debug('First 1500 chars of Lua data:', luaData.substring(0, 1500))
 
-			// Trouve tous les blocs de champions
 			const championMatches = luaData.matchAll(
 				/\[\"([^"]+)\"\]\s*=\s*{((?:[^{}]|{(?:[^{}]|{[^{}]*})*})*?)}/g
 			)
@@ -293,12 +317,10 @@ export class WikiDataService {
 				const id = idMatch[1]
 				const championName = nameMatch[1]
 
-				// Debug log pour chaque champion
 				console.debug(`Processing champion: ${championName} (ID: ${id})`)
 
 				// Extract ARAM stats
 				const aramStats = this.extractAramStats(block)
-				console.log('ARAM stats:', aramStats)
 
 				championData[id] = {
 					id: id,
@@ -331,7 +353,6 @@ export class WikiDataService {
 				console.warn(
 					'No ARAM modifications found. This might indicate a parsing issue.'
 				)
-				// Log un exemple de données brutes pour le premier champion
 				const firstChampId = Object.keys(championData)[0]
 				if (firstChampId) {
 					console.debug(

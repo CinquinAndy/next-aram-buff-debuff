@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input'
 
 import { SortDropdown } from '@/app/components/SortDropdown'
 import { ResetIcon } from '@radix-ui/react-icons'
+import Image from 'next/image'
+import Link from 'next/link'
 
 export const Header = ({
 	searchTerm,
@@ -27,20 +29,20 @@ export const Header = ({
 		sortDirection === 'desc' && onToggleDirection()
 	}
 	return (
-		<div className="sticky top-0 z-50 backdrop-blur-xl">
-			<div className="bg-gradient-to-b from-white/80 to-white/40 pb-6 pt-8">
+		<div className="sticky top-0 z-50 rounded-b-2xl backdrop-blur-2xl">
+			<div className="relative rounded-b-2xl bg-gradient-to-b from-black/50 to-black/20 pb-6 pt-8 shadow-2xl shadow-white/10">
+				<div className={'absolute left-0 top-0 pt-2'}>
+					<Link href="/">
+						<Image
+							src="/images/logo.svg"
+							className={'invert'}
+							alt="League of Legends logo"
+							width={150}
+							height={150}
+						/>
+					</Link>
+				</div>
 				<div className="mx-auto max-w-7xl px-4">
-					<div className="mb-8 flex items-baseline justify-between">
-						<div>
-							<h1 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-4xl font-bold text-transparent">
-								ARAM Balance Changes
-							</h1>
-							<p className="mt-2 text-slate-600">
-								Current balance modifications for ARAM mode
-							</p>
-						</div>
-					</div>
-
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
 						<div className="relative flex-1">
 							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

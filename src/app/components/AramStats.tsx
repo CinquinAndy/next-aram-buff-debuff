@@ -54,7 +54,7 @@ export default function AramGrid({
 	}, [championsData, searchTerm, sortBy, sortDirection])
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+		<div className="min-h-screen bg-gradient-to-br from-black to-slate-950">
 			<Header
 				searchTerm={searchTerm}
 				onSearch={setSearchTerm}
@@ -68,7 +68,7 @@ export default function AramGrid({
 
 			<main className="mx-auto max-w-7xl px-4 py-6">
 				<AnimatePresence mode="popLayout">
-					<motion.div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+					<motion.div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:grid-cols-3">
 						{sortedChampions.map((champion, index) => (
 							<ChampionCard
 								key={champion.id}

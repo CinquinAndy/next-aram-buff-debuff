@@ -14,6 +14,7 @@ import {
 import { calculateModificationScore } from '@/app/utils/aramUtils'
 import { ChampionStatusBadges } from '@/app/components/ChampionStatusBadges'
 import { StatDisplay } from '@/app/components/StatDisplay'
+import Image from 'next/image'
 
 /**
  * Enhanced champion card with modification score display
@@ -32,18 +33,20 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 			initial={{ opacity: 0, y: 20 }}
 			animate={{ opacity: 1, y: 0 }}
 			exit={{ opacity: 0 }}
-			className="group relative overflow-hidden rounded-xl bg-white shadow-md shadow-black/[0.02] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/[0.05]"
+			className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-lg"
 		>
 			{/* Champion image and header */}
-			<div className="relative h-48">
-				<img
-					src="/api/placeholder/400/300"
+			<div className="relative h-48 overflow-hidden">
+				<Image
+					height={200}
+					width={300}
+					src={`/images/champions/${champion.name}_splash.jpg`}
 					alt={champion.name}
-					className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+					className="h-full w-full object-cover transition-all ease-in group-hover:scale-105"
 				/>
 
 				{/* Gradient overlay */}
-				<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent backdrop-blur-[2px]" />
+				<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
 				{/* Champion info */}
 				<div className="absolute bottom-0 left-0 right-0 p-4">

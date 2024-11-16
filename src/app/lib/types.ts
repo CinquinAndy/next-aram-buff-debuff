@@ -12,10 +12,16 @@ export interface Champion {
 	id: string
 	name: string
 	aram: AramStats
+	splashArt?: string
 }
 
 export interface ChampionData {
 	[key: string]: Champion
+}
+
+export interface ChampionImage {
+	loading: string
+	splash: string
 }
 
 /**
