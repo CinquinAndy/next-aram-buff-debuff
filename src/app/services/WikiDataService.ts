@@ -3,49 +3,37 @@
  * @module services/WikiDataService
  */
 
-import { ChampionData, AramStats, Champion } from '@/app/lib/types'
+import fs from 'fs'
+import path from 'path'
+import { ChampionData } from '@/app/lib/types'
+import { PROXY_CONFIG } from '@/app/config/proxy'
+import { HttpService } from './http'
 
-/**
- * Configuration options for the WikiDataService
- */
 interface WikiFetchOptions {
-	/** Force refresh cache regardless of age */
 	forceRefresh?: boolean
-	/** Maximum age of cached data in milliseconds */
 	maxAge?: number
 }
 
-/**
- * Result object returned from wiki data fetches
- */
 interface WikiFetchResult {
-	/** The parsed champion data */
 	data: ChampionData
-	/** Whether the data came from cache */
 	fromCache: boolean
-	/** Timestamp when data was fetched/cached */
 	timestamp: number
-	/** Current patch version */
 	patchVersion?: string
 }
 
-/**
- * Service responsible for fetching, caching, and parsing ARAM data from the LoL Wiki
- */
 export class WikiDataService {
 	private static instance: WikiDataService
-	private static readonly CACHE_KEY = 'wiki_champion_data'
-	private static readonly DEFAULT_MAX_AGE = 24 * 60 * 60 * 1000 // 24 hours
-	private static readonly WIKI_URL =
-		'https://leagueoflegends.fandom.com/wiki/Module:ChampionData/data?action=edit'
+	private static readonly CACHE_DIR = path.join(process.cwd(), '.cache')
+	private static readonly CACHE_FILE = path.join(
+		WikiDataService.CACHE_DIR,
+		'wiki_data.json'
+	)
 
 	private constructor() {
 		console.info('WikiDataService: Initializing service')
+		this.initCacheDir()
 	}
 
-	/**
-	 * Gets singleton instance of WikiDataService
-	 */
 	public static getInstance(): WikiDataService {
 		if (!WikiDataService.instance) {
 			WikiDataService.instance = new WikiDataService()
@@ -54,14 +42,26 @@ export class WikiDataService {
 	}
 
 	/**
-	 * Fetches ARAM data either from cache or LoL Wiki
-	 * @param options - Configuration options for the fetch
+	 * Initialize cache directory if it doesn't exist
 	 */
+	private initCacheDir(): void {
+		try {
+			if (!fs.existsSync(WikiDataService.CACHE_DIR)) {
+				fs.mkdirSync(WikiDataService.CACHE_DIR, { recursive: true })
+				console.info('WikiDataService: Cache directory created')
+			}
+		} catch (error) {
+			console.warn('WikiDataService: Failed to create cache directory', error)
+		}
+	}
+
 	public async getData(
 		options: WikiFetchOptions = {}
 	): Promise<WikiFetchResult> {
-		const { forceRefresh = false, maxAge = WikiDataService.DEFAULT_MAX_AGE } =
-			options
+		const {
+			forceRefresh = false,
+			maxAge = PROXY_CONFIG.CACHE.DEFAULT_MAX_AGE,
+		} = options
 
 		console.info('WikiDataService: Getting ARAM data', { forceRefresh, maxAge })
 
@@ -82,14 +82,15 @@ export class WikiDataService {
 		// Fetch fresh data
 		try {
 			console.info('WikiDataService: Fetching fresh data from wiki')
-			const freshData = await this.fetchFromWiki()
+			const freshData = await HttpService.fetchWithProxy(PROXY_CONFIG.WIKI_URL)
 			const patchVersion = this.extractPatchVersion(freshData)
 
 			// Parse the raw wiki data
+			console.info('WikiDataService: Parsing wiki data')
 			const parsedData = this.parseWikiData(freshData)
 
 			// Cache the results
-			const result = {
+			const result: WikiFetchResult = {
 				data: parsedData,
 				fromCache: false,
 				timestamp: Date.now(),
@@ -106,7 +107,6 @@ export class WikiDataService {
 		} catch (error) {
 			console.error('WikiDataService: Error fetching data', error)
 
-			// Fallback to cached data if available
 			if (cachedData) {
 				console.warn('WikiDataService: Using stale cache due to fetch error')
 				return {
@@ -119,74 +119,118 @@ export class WikiDataService {
 		}
 	}
 
-	/**
-	 * Extracts patch version from wiki content
-	 */
 	private extractPatchVersion(content: string): string | undefined {
 		const patchMatch = content.match(/\["changes"\]\s*=\s*"(V\d+\.\d+)"/)
 		return patchMatch?.[1]
 	}
 
-	/**
-	 * Fetches raw data from LoL Wiki
-	 */
-	private async fetchFromWiki(): Promise<string> {
-		const response = await fetch(WikiDataService.WIKI_URL)
-		if (!response.ok) {
-			throw new Error(`Failed to fetch wiki data: ${response.status}`)
-		}
-
-		const html = await response.text()
-		const match = html.match(/<textarea[^>]*>([\s\S]*?)<\/textarea>/i)
-
-		if (!match) {
-			throw new Error('No data found in wiki response')
-		}
-
-		return match[1]
-	}
-
-	/**
-	 * Parses raw wiki Lua data into structured champion data
-	 */
-	private parseWikiData(raw: string): ChampionData {
-		console.info('WikiDataService: Parsing wiki data')
-		const data: ChampionData = {}
-
-		// TODO: Implement Lua parsing logic
-		// This will need to parse the Lua table format and extract ARAM stats
-
-		return data
-	}
-
-	/**
-	 * Retrieves cached data from localStorage
-	 */
 	private getFromCache(): WikiFetchResult | null {
 		try {
-			const cached = localStorage.getItem(WikiDataService.CACHE_KEY)
-			return cached ? JSON.parse(cached) : null
+			if (!fs.existsSync(WikiDataService.CACHE_FILE)) {
+				return null
+			}
+
+			const fileContent = fs.readFileSync(WikiDataService.CACHE_FILE, 'utf-8')
+			return JSON.parse(fileContent) as WikiFetchResult
 		} catch (error) {
 			console.warn('WikiDataService: Cache read error', error)
 			return null
 		}
 	}
 
-	/**
-	 * Saves data to localStorage cache
-	 */
 	private saveToCache(data: WikiFetchResult): void {
 		try {
-			localStorage.setItem(WikiDataService.CACHE_KEY, JSON.stringify(data))
+			fs.writeFileSync(
+				WikiDataService.CACHE_FILE,
+				JSON.stringify(data, null, 2),
+				'utf-8'
+			)
 		} catch (error) {
 			console.warn('WikiDataService: Cache write error', error)
 		}
 	}
 
-	/**
-	 * Checks if cached data has exceeded maxAge
-	 */
 	private isCacheStale(timestamp: number, maxAge: number): boolean {
 		return Date.now() - timestamp > maxAge
+	}
+
+	/**
+	 * Parses raw wiki Lua data into structured champion data
+	 * @param raw - Raw Lua table data from wiki
+	 * @returns Structured champion data
+	 */
+	private parseWikiData(raw: string): ChampionData {
+		console.info('WikiDataService: Starting to parse wiki data')
+		const championData: ChampionData = {}
+
+		try {
+			// Trouver tous les blocs de champions
+			const championBlocks = raw.match(/\[\d+]\s*=\s*{[^}]+}/g) || []
+			console.info(
+				`WikiDataService: Found ${championBlocks.length} champion blocks`
+			)
+
+			for (const block of championBlocks) {
+				// Extraire l'ID du champion
+				const idMatch = block.match(/\[(\d+)]/)
+				if (!idMatch) continue
+
+				// Extraire les données ARAM
+				const aramMatch = block.match(/aram\s*=\s*{([^}]+)}/)
+				if (!aramMatch) continue
+
+				// Extraire le nom du champion
+				const nameMatch = block.match(/apiname\s*=\s*"([^"]+)"/)
+				if (!nameMatch) continue
+
+				const id = idMatch[1]
+				const aramData = aramMatch[1]
+				const name = nameMatch[1]
+
+				// Parser les stats ARAM
+				const aramStats: any = {}
+				const statsMatches = aramData.matchAll(/([a-z_]+)\s*=\s*([\d.]+)/g)
+				for (const match of statsMatches) {
+					const [_, key, value] = match
+					aramStats[key] = parseFloat(value)
+				}
+
+				// Vérifier si nous avons des données ARAM valides
+				if (Object.keys(aramStats).length > 0) {
+					championData[id] = {
+						name,
+						aram: {
+							dmg_dealt: aramStats.dmg_dealt || 1,
+							dmg_taken: aramStats.dmg_taken || 1,
+							healing: aramStats.healing || 1,
+							shielding: aramStats.shielding || 1,
+							ability_haste: aramStats.ability_haste || 1,
+							attack_speed: aramStats.attack_speed || 1,
+							energy_regen: aramStats.energy_regen || 1,
+						},
+					}
+				}
+			}
+
+			console.info(
+				`WikiDataService: Successfully parsed ${Object.keys(championData).length} champions`
+			)
+
+			// Log un exemple pour debugging
+			const firstChampion = Object.values(championData)[0]
+			if (firstChampion) {
+				console.info('WikiDataService: First champion parsed:', {
+					name: firstChampion.name,
+					stats: firstChampion.aram,
+				})
+			}
+
+			return championData
+		} catch (error) {
+			console.error('WikiDataService: Error parsing wiki data:', error)
+			throw new Error(
+				`Failed to parse wiki data: ${error instanceof Error ? error.message : 'Unknown error'}`
+			)
+		}
 	}
 }

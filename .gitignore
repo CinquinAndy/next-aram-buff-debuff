@@ -46,3 +46,4 @@ output.txt
 .next
 .idea
 node_modules
+.cache/

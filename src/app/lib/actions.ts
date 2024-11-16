@@ -20,16 +20,21 @@ export async function fetchAramData(): Promise<ChampionData> {
 				maxAge: 12 * 60 * 60 * 1000, // 12 hours
 			})
 
+		const championsCount = Object.keys(data).length
+
 		// Log detailed information about the data retrieval
 		console.info('Action: ARAM data retrieved', {
 			source: fromCache ? 'cache' : 'wiki',
 			patchVersion,
-			championsCount: Object.keys(data).length,
+			championsCount,
 			dataAge: Date.now() - timestamp,
 		})
 
-		if (Object.keys(data).length === 0) {
-			throw new Error('No champion data found')
+		if (championsCount === 0) {
+			console.error('Action: No champion data found in the response')
+			throw new Error(
+				'No champion data found in the parsed response. Check the wiki data format.'
+			)
 		}
 
 		return data

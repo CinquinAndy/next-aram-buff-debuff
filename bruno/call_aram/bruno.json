@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "call aram",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
