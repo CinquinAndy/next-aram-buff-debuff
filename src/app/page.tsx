@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { fetchAramData } from '@/app/lib/actions'
 import AramGrid from '@/app/components/AramStats'
-import { Loading } from '@/app/components/Main'
 
 async function ChampionDataFetcher() {
 	try {
@@ -27,15 +26,8 @@ async function ChampionDataFetcher() {
 
 export default async function Page() {
 	return (
-		<div className="min-h-screen bg-gray-50 p-8">
-			<div className="mx-auto max-w-7xl">
-				<h1 className="mb-8 text-3xl font-bold">
-					League of Legends ARAM Changes
-				</h1>
-				<Suspense fallback={<Loading />}>
-					<ChampionDataFetcher />
-				</Suspense>
-			</div>
-		</div>
+		<Suspense>
+			<ChampionDataFetcher />
+		</Suspense>
 	)
 }
