@@ -25,7 +25,7 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 }) => {
 	const score = calculateModificationScore(champion)
 	const hasModifications = Object.values(champion.aram).some(v => v !== 1)
-	if (!hasModifications) return null
+	//if (!hasModifications) return null
 
 	return (
 		<motion.div
@@ -60,7 +60,7 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 					<div
 						className={
 							'absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full p-2 text-sm font-bold text-white backdrop-blur-sm ' +
-							`${score.total > 0 ? 'bg-green-500/50' : 'bg-red-500/50'}`
+							`${score.total == 0 ? 'bg-gray-500/50' : (score.total > 0 ? 'bg-green-500/50' : 'bg-red-500/50')}`
 						}
 					>
 						<span className={`text-xs italic`}>{score.total.toFixed(1)}</span>

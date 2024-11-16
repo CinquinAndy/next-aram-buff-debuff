@@ -1,7 +1,7 @@
 'use client'
 
 import { Champion } from '@/app/lib/types'
-import { ArrowDownCircle, Sparkles } from 'lucide-react'
+import { ArrowDownCircle, Sparkles, Equal } from 'lucide-react'
 import { analyzeChampionStats } from '@/app/utils/aramUtils'
 
 /**
@@ -17,15 +17,22 @@ export const ChampionStatusBadges = ({ champion }: { champion: Champion }) => {
 			{hasBuffs && (
 				<span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-100 backdrop-blur-sm">
 					<Sparkles className="h-3 w-3" />
-					{buffCount > 1 ? `${buffCount} Buffs` : '1 Buff'}
+					{buffCount} Buffs
 				</span>
 			)}
 			{hasNerfs && (
 				<span className="inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-3 py-1 text-xs font-medium text-rose-100 backdrop-blur-sm">
 					<ArrowDownCircle className="h-3 w-3" />
-					{nerfCount > 1 ? `${nerfCount} Nerfs` : '1 Nerf'}
+					{nerfCount} Nerfs
 				</span>
 			)}
+			{!hasBuffs && !hasNerfs && (
+				<span className="inline-flex items-center gap-1 rounded-full bg-gray-500/20 px-3 py-1 text-xs font-medium text-rose-100 backdrop-blur-sm">
+				<Equal className="h-3 w-3" />
+				Normal
+			</span>
+			)
+			}
 		</div>
 	)
 }
