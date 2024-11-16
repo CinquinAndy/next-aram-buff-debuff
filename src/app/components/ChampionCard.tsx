@@ -60,7 +60,7 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 					<div
 						className={
 							'absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full p-2 text-sm font-bold text-white backdrop-blur-sm ' +
-							`${score.total == 0 ? 'bg-gray-500/50' : (score.total > 0 ? 'bg-green-500/50' : 'bg-red-500/50')}`
+							`${score.total == 0 ? 'bg-gray-500/50' : score.total > 0 ? 'bg-green-500/50' : 'bg-red-500/50'}`
 						}
 					>
 						<span className={`text-xs italic`}>{score.total.toFixed(1)}</span>
@@ -104,13 +104,12 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 						/>
 					)
 				})}
-				{
-					!hasModifications && (
-						<div className="group relative overflow-hidden rounded-xl border border-slate-200/10 bg-gradient-to-r p-3 from-gray-50 to-white">
-			this champion seem to be perfectly balanced, has everything should be...
-			</div>
-					)
-				}
+				{!hasModifications && (
+					<div className="group relative overflow-hidden rounded-xl border border-slate-200/10 bg-gradient-to-r from-gray-50 to-white p-3">
+						this champion seem to be perfectly balanced, has everything should
+						be...
+					</div>
+				)}
 			</div>
 		</motion.div>
 	)

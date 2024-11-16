@@ -28,11 +28,10 @@ export const ChampionStatusBadges = ({ champion }: { champion: Champion }) => {
 			)}
 			{!hasBuffs && !hasNerfs && (
 				<span className="inline-flex items-center gap-1 rounded-full bg-gray-500/20 px-3 py-1 text-xs font-medium text-rose-100 backdrop-blur-sm">
-				<Equal className="h-3 w-3" />
-				Normal
-			</span>
-			)
-			}
+					<Equal className="h-3 w-3" />
+					Normal
+				</span>
+			)}
 		</div>
 	)
 }
