@@ -38,3 +38,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+src\app\fonts
+bun.lockb
+large.txt
+output.txt
+.next
+.idea
+node_modules
