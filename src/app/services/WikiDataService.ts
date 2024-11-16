@@ -156,73 +156,123 @@ export class WikiDataService {
 
 	/**
 	 * Parses raw wiki Lua data into structured champion data
-	 * @param raw - Raw Lua table data from wiki
+	 * @param html - Raw HTML from wiki page
 	 * @returns Structured champion data
 	 */
-	private parseWikiData(raw: string): ChampionData {
+	private parseWikiData(html: string): ChampionData {
 		console.info('WikiDataService: Starting to parse wiki data')
 		const championData: ChampionData = {}
 
 		try {
-			// Trouver tous les blocs de champions
-			const championBlocks = raw.match(/\[\d+]\s*=\s*{[^}]+}/g) || []
+			// First extract and decode Lua data from HTML
+			const luaData = this.extractLuaFromHtml(html)
+			if (!luaData) {
+				throw new Error('No Lua data found in wiki page')
+			}
+
+			// Find individual champion entries with a more lenient pattern
+			const championBlocks = luaData.split(/\["[A-Za-z\s'\.]+"\]\s*=\s*{/)
+			championBlocks.shift() // Remove the initial empty piece
+
 			console.info(
-				`WikiDataService: Found ${championBlocks.length} champion blocks`
+				`WikiDataService: Found ${championBlocks.length} potential champion entries`
 			)
 
-			for (const block of championBlocks) {
-				// Extraire l'ID du champion
-				const idMatch = block.match(/\[(\d+)]/)
-				if (!idMatch) continue
+			for (let block of championBlocks) {
+				// Complete the block
+				block = '{' + block.split(/\},?\s*\["/)[0] + '}'
 
-				// Extraire les données ARAM
-				const aramMatch = block.match(/aram\s*=\s*{([^}]+)}/)
-				if (!aramMatch) continue
+				// Extract champion name
+				const nameMatch = block.match(/\["apiname"\]\s*=\s*"([^"]+)"/)
+				if (!nameMatch) {
+					console.debug(
+						'WikiDataService: Skipping block - No champion name found'
+					)
+					continue
+				}
+				const championName = nameMatch[1]
 
-				// Extraire le nom du champion
-				const nameMatch = block.match(/apiname\s*=\s*"([^"]+)"/)
-				if (!nameMatch) continue
-
+				// Extract champion ID with a more precise pattern
+				const idMatch = block.match(/\["id"\]\s*=\s*(\d+)/)
+				if (!idMatch) {
+					console.debug(
+						`WikiDataService: Skipping ${championName} - No ID found`
+					)
+					continue
+				}
 				const id = idMatch[1]
-				const aramData = aramMatch[1]
-				const name = nameMatch[1]
 
-				// Parser les stats ARAM
-				const aramStats: any = {}
-				const statsMatches = aramData.matchAll(/([a-z_]+)\s*=\s*([\d.]+)/g)
-				for (const match of statsMatches) {
-					const [_, key, value] = match
-					aramStats[key] = parseFloat(value)
+				// Initialize default ARAM stats
+				const aramStats = {
+					dmg_dealt: 1,
+					dmg_taken: 1,
+					healing: 1,
+					shielding: 1,
+					ability_haste: 1,
+					attack_speed: 1,
+					energy_regen: 1,
 				}
 
-				// Vérifier si nous avons des données ARAM valides
-				if (Object.keys(aramStats).length > 0) {
-					championData[id] = {
-						name,
-						aram: {
-							dmg_dealt: aramStats.dmg_dealt || 1,
-							dmg_taken: aramStats.dmg_taken || 1,
-							healing: aramStats.healing || 1,
-							shielding: aramStats.shielding || 1,
-							ability_haste: aramStats.ability_haste || 1,
-							attack_speed: aramStats.attack_speed || 1,
-							energy_regen: aramStats.energy_regen || 1,
-						},
+				// Try to find ARAM data block
+				const aramMatch = block.match(/\["aram"\]\s*=\s*{([^}]+)}/)
+				if (aramMatch) {
+					const aramBlock = aramMatch[1]
+					// Extract numerical values including decimals and negative numbers
+					const statMatches = aramBlock.matchAll(
+						/\["?([a-z_]+)"?\]\s*=\s*([-+]?[0-9]*\.?[0-9]+)/g
+					)
+
+					for (const match of Array.from(statMatches)) {
+						const [_, key, value] = match
+						if (key in aramStats) {
+							aramStats[key as keyof typeof aramStats] = parseFloat(value)
+						}
 					}
+				}
+
+				// Add champion to collection
+				console.info(
+					`WikiDataService: Successfully parsed champion ${championName} (ID: ${id})`
+				)
+
+				// Log ARAM stats if they differ from defaults
+				const hasModifications = Object.entries(aramStats).some(
+					([_, value]) => value !== 1
+				)
+				if (hasModifications) {
+					console.info(
+						`WikiDataService: ARAM modifications found for ${championName}:`,
+						aramStats
+					)
+				}
+
+				championData[id] = {
+					name: championName,
+					aram: aramStats,
 				}
 			}
 
+			const championCount = Object.keys(championData).length
 			console.info(
-				`WikiDataService: Successfully parsed ${Object.keys(championData).length} champions`
+				`WikiDataService: Successfully parsed ${championCount} champions`
 			)
 
-			// Log un exemple pour debugging
-			const firstChampion = Object.values(championData)[0]
-			if (firstChampion) {
-				console.info('WikiDataService: First champion parsed:', {
-					name: firstChampion.name,
-					stats: firstChampion.aram,
+			if (championCount > 0) {
+				const sample = Object.values(championData)[0]
+				console.info('WikiDataService: Sample champion data:', {
+					name: sample.name,
+					stats: sample.aram,
 				})
+			} else {
+				console.warn('WikiDataService: No champions were successfully parsed')
+			}
+
+			// Debug output of raw data
+			if (championCount === 0) {
+				console.debug(
+					'WikiDataService: Raw Lua sample for debugging:',
+					luaData.substring(0, 1000)
+				)
 			}
 
 			return championData
@@ -231,6 +281,42 @@ export class WikiDataService {
 			throw new Error(
 				`Failed to parse wiki data: ${error instanceof Error ? error.message : 'Unknown error'}`
 			)
+		}
+	}
+
+	/**
+	 * Extracts and decodes Lua table data from the wiki HTML page
+	 */
+	private extractLuaFromHtml(html: string): string | null {
+		try {
+			// Decode HTML entities
+			const decoded = html
+				.replace(/&lt;/g, '<')
+				.replace(/&gt;/g, '>')
+				.replace(/&quot;/g, '"')
+				.replace(/&amp;/g, '&')
+				.replace(/&#39;/g, "'")
+
+			// Extract Lua table with more flexible pattern
+			let match = decoded.match(/return\s*({[\s\S]*?})(?:\s*--|$)/)
+			if (!match) {
+				console.warn('WikiDataService: No Lua table found in HTML')
+				return null
+			}
+
+			const luaTable = match[1].trim()
+			console.info('WikiDataService: Successfully extracted Lua data')
+
+			// Log a sample for debugging
+			console.debug(
+				'WikiDataService: Lua data sample:',
+				luaTable.substring(0, 500)
+			)
+
+			return luaTable
+		} catch (error) {
+			console.error('WikiDataService: Error extracting Lua data:', error)
+			return null
 		}
 	}
 }
