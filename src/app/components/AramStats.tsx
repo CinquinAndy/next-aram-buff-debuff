@@ -24,11 +24,10 @@ export default function AramGrid({
 				score: calculateModificationScore(data),
 			}))
 			.filter(champion => {
-				const hasModifications = Object.values(champion.aram).some(v => v !== 1)
 				const matchesSearch = champion.name
 					.toLowerCase()
 					.includes(searchTerm.toLowerCase())
-				return hasModifications && matchesSearch
+				return matchesSearch
 			})
 
 		return champions.sort((a, b) => {

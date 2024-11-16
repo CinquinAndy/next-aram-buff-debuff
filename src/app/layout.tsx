@@ -33,13 +33,11 @@ export default function RootLayout({
 				<Link
 					href={'https://forhives.fr'}
 					className={
-						'sticky bottom-0 right-0 rounded-tl bg-white/10 p-3 text-xs text-white'
+						'fixed bottom-0 right-0 rounded-tl bg-white/10 p-3 text-xs text-white'
 					}
 				>
 					Developed with ❤️ by{' '}
-					<Link href="https://forhives.fr" className={'hover:underline'}>
-						ForHives
-					</Link>
+					<span className={'hover:underline'}>ForHives</span>
 				</Link>
 			</body>
 		</html>
