@@ -28,29 +28,6 @@ interface AramGridProps {
 	aramData: ChampionData
 }
 
-export function AramGrid({ aramData }: AramGridProps) {
-	// Convert aramData to array and sort by champion name
-	const sortedChampions = Object.entries(aramData)
-		.map(([id, champion]) => ({
-			id,
-			...champion,
-		}))
-		.sort((a, b) => a.name.localeCompare(b.name))
-
-	return (
-		<>
-			{process.env.NODE_ENV === 'development' && (
-				<DebugInfo aramData={aramData} />
-			)}
-			<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-				{sortedChampions.map(champion => (
-					<ChampionCard key={champion.id} champion={champion} />
-				))}
-			</div>
-		</>
-	)
-}
-
 interface DebugInfoProps {
 	aramData: ChampionData
 }

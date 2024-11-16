@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
-import { AramGrid, Loading } from '@/app/components/Main'
 import { fetchAramData } from '@/app/lib/actions'
+import AramGrid from '@/app/components/AramStats'
+import { Loading } from '@/app/components/Main'
 
 async function ChampionDataFetcher() {
 	try {
@@ -14,7 +15,7 @@ async function ChampionDataFetcher() {
 			)
 		}
 
-		return <AramGrid aramData={aramData} />
+		return <AramGrid championsData={aramData} />
 	} catch (error) {
 		return (
 			<div className="p-4 text-red-600">
