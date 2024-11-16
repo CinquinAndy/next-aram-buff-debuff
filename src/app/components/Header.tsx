@@ -41,7 +41,7 @@ export const Header = ({
 									placeholder="Search champions..."
 									value={searchTerm}
 									onChange={e => onSearch(e.target.value)}
-									className="w-full pl-10 pr-4"
+									className="w-full pl-10 pr-4 text-white"
 								/>
 								<ResetIcon
 									className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-slate-400"

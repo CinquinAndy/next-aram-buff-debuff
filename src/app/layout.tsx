@@ -30,16 +30,17 @@ export default function RootLayout({
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
 				{children}
-				<p
+				<Link
+					href={'https://forhives.fr'}
 					className={
-						'absolute bottom-0 right-0 rounded-tl bg-white/10 p-3 text-xs text-white'
+						'sticky bottom-0 right-0 rounded-tl bg-white/10 p-3 text-xs text-white'
 					}
 				>
 					Developed with ❤️ by{' '}
 					<Link href="https://forhives.fr" className={'hover:underline'}>
 						ForHives
 					</Link>
-				</p>
+				</Link>
 			</body>
 		</html>
 	)
