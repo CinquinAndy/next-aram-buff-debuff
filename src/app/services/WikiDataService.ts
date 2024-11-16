@@ -301,6 +301,7 @@ export class WikiDataService {
 				console.log('ARAM stats:', aramStats)
 
 				championData[id] = {
+					id: id,
 					name: championName,
 					aram: aramStats,
 				}
