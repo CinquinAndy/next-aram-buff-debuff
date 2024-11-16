@@ -14,6 +14,7 @@ export default function AramGrid({
 }) {
 	const [searchTerm, setSearchTerm] = useState('')
 	const [sortBy, setSortBy] = useState('name')
+	const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
 	const sortedChampions = useMemo(() => {
 		const champions = Object.entries(championsData)
@@ -31,20 +32,26 @@ export default function AramGrid({
 			})
 
 		return champions.sort((a, b) => {
+			let comparison = 0
 			switch (sortBy) {
 				case 'name':
-					return a.name.localeCompare(b.name)
+					comparison = a.name.localeCompare(b.name)
+					break
 				case 'totalImpact':
-					return Math.abs(b.score.total) - Math.abs(a.score.total)
+					comparison = Math.abs(b.score.total) - Math.abs(a.score.total)
+					break
 				case 'buffPower':
-					return b.score.buffs - a.score.buffs
+					comparison = b.score.buffs - a.score.buffs
+					break
 				case 'nerfPower':
-					return b.score.nerfs - a.score.nerfs
+					comparison = b.score.nerfs - a.score.nerfs
+					break
 				default:
 					return 0
 			}
+			return sortDirection === 'asc' ? comparison : -comparison
 		})
-	}, [championsData, searchTerm, sortBy])
+	}, [championsData, searchTerm, sortBy, sortDirection])
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
@@ -53,6 +60,10 @@ export default function AramGrid({
 				onSearch={setSearchTerm}
 				sortBy={sortBy}
 				onSort={setSortBy}
+				sortDirection={sortDirection}
+				onToggleDirection={() =>
+					setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
+				}
 			/>
 
 			<main className="mx-auto max-w-7xl px-4 py-6">

@@ -47,3 +47,4 @@ output.txt
 .idea
 node_modules
 .cache/
+.cache\wiki_data.json

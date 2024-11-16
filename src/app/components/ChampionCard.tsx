@@ -53,19 +53,21 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 					<ChampionStatusBadges champion={champion} />
 				</div>
 
-				{/* New rank indicator */}
-				{rank && (
-					<div className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-sm font-bold text-white backdrop-blur-sm">
-						#{rank}
+				{score && (
+					<div
+						className={
+							'absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full p-2 text-sm font-bold text-white backdrop-blur-sm ' +
+							`${score.total > 0 ? 'bg-green-500/50' : 'bg-red-500/50'}`
+						}
+					>
+						<span className={`text-xs italic`}>{score.total.toFixed(1)}</span>
 					</div>
 				)}
 
 				<div className="absolute bottom-0 left-0 right-0 p-4">
 					<div className="flex items-baseline justify-between">
 						<h3 className="text-2xl font-bold text-white">{champion.name}</h3>
-						<div className="text-sm text-white/80">
-							Score: {score.total.toFixed(1)}
-						</div>
+						<div className="text-sm text-white/80"></div>
 					</div>
 
 					<ChampionStatusBadges champion={champion} />

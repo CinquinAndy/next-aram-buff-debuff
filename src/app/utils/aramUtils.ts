@@ -33,7 +33,7 @@ export const analyzeChampionStats = (aram: Champion['aram']) => {
 export const formatStatValue = (statKey: string, value: number): string => {
 	// Special case: ability haste uses flat values
 	if (statKey === 'ability_haste') {
-		const absoluteValue = Math.round((value - 1) * 100)
+		const absoluteValue = Math.round(value)
 		return `${absoluteValue > 0 ? '+' : ''}${absoluteValue}`
 	}
 
@@ -60,8 +60,14 @@ export const calculateModificationScore = (
 		if (value === 1) return
 
 		const statWeight = STAT_WEIGHTS[key as keyof typeof STAT_WEIGHTS]
-		const isPositive = key === 'dmg_taken' ? value < 1 : value > 1
-		const magnitude = Math.abs(value - 1) * 100 * statWeight
+		const isPositive = isStatPositive(key, value)
+
+		let magnitude
+		if (key === 'ability_haste') {
+			magnitude = Math.abs(value - 1) * statWeight
+		} else {
+			magnitude = Math.abs(value - 1) * 100 * statWeight
+		}
 
 		if (isPositive) {
 			buffs += magnitude
@@ -94,6 +100,9 @@ export const calculateModificationScore = (
 export const isStatPositive = (statKey: string, value: number): boolean => {
 	if (statKey === 'dmg_taken') {
 		return value < 1 // Damage reduction is positive
+	}
+	if (statKey === 'ability_haste') {
+		return value > 0 // Ability haste use absolute values
 	}
 	return value > 1
 }
