@@ -63,9 +63,15 @@ export class WikiDataService {
 		championData: ChampionData
 	): Promise<void> {
 		const imageService = ImageService.getInstance()
-		const championNames = Object.values(championData).map(
-			champion => champion.name
-		)
+		const championNames = Object.values(championData).map(champion => {
+			if (champion.name == 'GnarBig') {
+				champion.name = 'Gnar'
+			}
+			if (champion.name == 'MonkeyKing') {
+				champion.name = 'Wukong'
+			}
+			return champion.name
+		})
 
 		try {
 			const imagePaths = await imageService.ensureChampionImages(championNames)
