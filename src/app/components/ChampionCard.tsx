@@ -105,7 +105,7 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 					)
 				})}
 				{!hasModifications && (
-					<div className="group relative overflow-hidden rounded-xl border border-slate-200/10 bg-gradient-to-r from-gray-50 to-white p-3">
+					<div className="group relative overflow-hidden rounded-xl border border-slate-200/10 bg-gradient-to-r from-gray-50 to-white p-3 py-5">
 						perfectly balanced, as all things should be
 					</div>
 				)}
