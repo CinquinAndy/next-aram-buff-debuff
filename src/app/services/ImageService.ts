@@ -80,6 +80,11 @@ export class ImageService {
 	 * @returns Promise resolving to true if successful, false otherwise
 	 */
 	private async downloadImage(championName: string): Promise<boolean> {
+		if (championName.includes('GnarBig')) {
+			championName = championName.replace('GnarBig', 'Gnar')
+		}
+
+		championName = championName.replace('Wukong', 'MonkeyKing')
 		const imageUrl = `${ImageService.BASE_URL}/${championName}_0.jpg`
 		const localPath = this.getLocalImagePath(championName)
 
@@ -119,7 +124,7 @@ export class ImageService {
 	 * @returns Promise resolving to the local image path
 	 */
 	public async ensureChampionImage(championName: string): Promise<string> {
-		const sanitizedName = championName.replace(/[^a-zA-Z0-9]/g, '')
+		let sanitizedName = championName.replace(/[^a-zA-Z0-9]/g, '')
 
 		if (!this.imageExists(sanitizedName)) {
 			console.info(

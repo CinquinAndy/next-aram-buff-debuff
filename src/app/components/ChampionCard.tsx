@@ -40,7 +40,7 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 				<Image
 					height={200}
 					width={300}
-					src={`/images/champions/${champion.name}_splash.jpg`}
+					src={`/images/champions/${champion.name == 'Wukong' ? 'MonkeyKing' : champion.name}_splash.jpg`}
 					alt={champion.name}
 					className="h-full w-full object-cover transition-all ease-in group-hover:scale-105"
 				/>
