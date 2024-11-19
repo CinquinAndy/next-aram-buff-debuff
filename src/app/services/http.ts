@@ -9,7 +9,8 @@ export class HttpService {
 	 * Fetches data through multiple proxy services with fallback
 	 */
 	static async fetchWithProxy(targetUrl: string): Promise<string> {
-		const encodedUrl = encodeURIComponent(targetUrl)
+		// const encodedUrl = encodeURIComponent(targetUrl)
+		const encodedUrl = targetUrl
 		let lastError: Error | null = null
 
 		// Try each proxy in sequence
