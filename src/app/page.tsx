@@ -8,7 +8,7 @@ async function ChampionDataFetcher() {
 
 		const patchInfos = await getPatchInfos()
 
-		console.log('API infos fetched', patchInfos, aramData)
+		console.info('API infos fetched', patchInfos, aramData)
 
 		if (!aramData || Object.keys(aramData).length === 0) {
 			return (
