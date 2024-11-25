@@ -1,10 +1,14 @@
 import { Suspense } from 'react'
-import { fetchAramData } from '@/app/lib/actions'
+import { fetchAramData, getPatchInfos } from '@/app/lib/actions'
 import AramGrid from '@/app/components/AramStats'
 
 async function ChampionDataFetcher() {
 	try {
 		const aramData = await fetchAramData()
+
+		const patchInfos = await getPatchInfos()
+
+		console.log('API infos fetched', patchInfos, aramData)
 
 		if (!aramData || Object.keys(aramData).length === 0) {
 			return (
@@ -14,7 +18,7 @@ async function ChampionDataFetcher() {
 			)
 		}
 
-		return <AramGrid championsData={aramData} />
+		return <AramGrid championsData={aramData} patchInfos={patchInfos} />
 	} catch (error) {
 		return (
 			<div className="p-4 text-red-600">

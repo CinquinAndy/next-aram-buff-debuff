@@ -30,7 +30,7 @@ export const Header = ({
 	}
 	return (
 		<div className="sticky top-0 z-50 rounded-b-2xl backdrop-blur-2xl">
-			<div className="relative flex w-full items-center rounded-b-2xl bg-gradient-to-b from-black/50 to-black/20 pb-6 pt-8 shadow-2xl shadow-white/10">
+			<div className="relative flex w-full items-center rounded-b-2xl bg-gradient-to-b from-black/50 to-black/20 pb-6 pt-8 shadow-2xl shadow-black/10">
 				<div className={'w-full'}>
 					<div className="mx-auto max-w-7xl px-4">
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
