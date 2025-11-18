@@ -21,10 +21,13 @@ export class HttpService {
 					headers: PROXY_CONFIG.REQUEST_HEADERS,
 				})
 
+				console.info(response)
+
 				if (!response.ok) {
-					console.info(response)
 					throw new Error(`HTTP error! status: ${response.status}`)
 				}
+
+				
 
 				const text = await response.text()
 				console.info(
