@@ -27,8 +27,6 @@ export class HttpService {
 					throw new Error(`HTTP error! status: ${response.status}`)
 				}
 
-				
-
 				const text = await response.text()
 				console.info(
 					`HttpService: Successfully fetched data through ${proxyUrl}`
