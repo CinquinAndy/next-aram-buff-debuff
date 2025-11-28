@@ -2,6 +2,9 @@ import { Suspense } from 'react'
 import { fetchAramData, getPatchInfos } from '@/app/lib/actions'
 import AramGrid from '@/app/components/AramStats'
 
+// Force dynamic rendering to get fresh data
+export const dynamic = 'force-dynamic'
+
 async function ChampionDataFetcher() {
 	try {
 		const aramData = await fetchAramData()

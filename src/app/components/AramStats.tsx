@@ -5,7 +5,15 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Champion } from '@/app/lib/types'
 import { Header } from '@/app/components/Header'
 import { ChampionCard } from '@/app/components/ChampionCard'
-import { calculateModificationScore } from '@/app/utils/aramUtils'
+import {
+	calculateModificationScoreForMode,
+	getAvailableGameModes,
+	getGameModeStats,
+} from '@/app/utils/aramUtils'
+import {
+	GameModeSelector,
+	type GameMode,
+} from '@/app/components/GameModeSelector'
 import Link from 'next/link'
 
 export default function AramGrid({
@@ -21,13 +29,21 @@ export default function AramGrid({
 	const [searchTerm, setSearchTerm] = useState('')
 	const [sortBy, setSortBy] = useState('name')
 	const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+	const [selectedMode, setSelectedMode] = useState<GameMode>('aram')
+
+	// Get available game modes based on champion data
+	const availableModes = useMemo(
+		() => getAvailableGameModes(championsData),
+		[championsData]
+	)
 
 	const sortedChampions = useMemo(() => {
 		const champions = Object.entries(championsData)
 			.map(([id, data]) => ({
 				...data,
 				id,
-				score: calculateModificationScore(data),
+				score: calculateModificationScoreForMode(data, selectedMode),
+				currentModeStats: getGameModeStats(data, selectedMode),
 			}))
 			.filter(champion => {
 				const matchesSearch = champion.name
@@ -56,7 +72,7 @@ export default function AramGrid({
 			}
 			return sortDirection === 'asc' ? comparison : -comparison
 		})
-	}, [championsData, searchTerm, sortBy, sortDirection])
+	}, [championsData, searchTerm, sortBy, sortDirection, selectedMode])
 
 	return (
 		<div className="h-full min-h-screen bg-gradient-to-br from-[#0a1528] from-20% to-[#73551a]">
@@ -69,16 +85,24 @@ export default function AramGrid({
 				onToggleDirection={() =>
 					setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
 				}
-			/>
+			>
+				<GameModeSelector
+					selectedMode={selectedMode}
+					onModeChange={setSelectedMode}
+					availableModes={availableModes}
+				/>
+			</Header>
 
 			<main className="mx-auto max-w-7xl px-4 py-6">
 				<AnimatePresence mode="popLayout">
 					<motion.div className="columns-1 gap-6 space-y-6 md:columns-3">
 						{sortedChampions.map((champion, index) => (
 							<ChampionCard
-								key={champion.id}
+								key={`${champion.id}-${selectedMode}`}
 								champion={champion}
 								rank={index + 1}
+								gameMode={selectedMode}
+								gameModeStats={champion.currentModeStats}
 							/>
 						))}
 					</motion.div>

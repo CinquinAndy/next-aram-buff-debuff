@@ -89,7 +89,7 @@ export default function RefreshPopup() {
 			<button
 				type="button"
 				onClick={() => setIsOpen(true)}
-				className={`fixed bottom-4 right-4 p-3 rounded-full shadow-lg transition-all hover:scale-110 z-50 ${
+				className={`fixed bottom-4 left-4 p-3 rounded-full shadow-lg transition-all hover:scale-110 z-50 ${
 					isDataOld
 						? 'bg-orange-500 hover:bg-orange-600 animate-pulse'
 						: 'bg-blue-500 hover:bg-blue-600'
@@ -105,7 +105,7 @@ export default function RefreshPopup() {
 	}
 
 	return (
-		<div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 w-96 z-50 animate-in slide-in-from-bottom-5">
+		<div className="fixed bottom-4 left-4 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 w-96 z-50 animate-in slide-in-from-bottom-5">
 			<div className="flex items-start justify-between mb-3">
 				<div className="flex items-center gap-2">
 					<RefreshCw

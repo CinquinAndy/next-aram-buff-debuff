@@ -1,6 +1,6 @@
 'use client'
 
-import { Champion } from '@/app/lib/types'
+import { AramStats, Champion } from '@/app/lib/types'
 import { motion } from 'framer-motion'
 import {
 	ArrowUpNarrowWide,
@@ -11,21 +11,36 @@ import {
 	Sword,
 	Zap,
 } from 'lucide-react'
-import { calculateModificationScore } from '@/app/utils/aramUtils'
+import {
+	calculateModificationScoreFromStats,
+	analyzeChampionStats,
+} from '@/app/utils/aramUtils'
 import { ChampionStatusBadges } from '@/app/components/ChampionStatusBadges'
 import { StatDisplay } from '@/app/components/StatDisplay'
+import type { GameMode } from '@/app/components/GameModeSelector'
 import Image from 'next/image'
+
+interface ChampionCardProps {
+	champion: Champion
+	rank?: number
+	gameMode?: GameMode
+	gameModeStats?: AramStats
+}
 
 /**
  * Enhanced champion card with modification score display
  */
-export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
+export const ChampionCard: React.FC<ChampionCardProps> = ({
 	champion,
 	rank,
+	gameMode = 'aram',
+	gameModeStats,
 }) => {
-	const score = calculateModificationScore(champion)
-	const hasModifications = Object.values(champion.aram).some(v => v !== 1)
-	//if (!hasModifications) return null
+	// Use provided stats or fallback to aram stats
+	const stats = gameModeStats ?? champion.aram
+	const score = calculateModificationScoreFromStats(stats)
+	const hasModifications = Object.values(stats).some(v => v !== 1)
+	const analysis = analyzeChampionStats(stats)
 
 	return (
 		<motion.div
@@ -48,14 +63,6 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 				{/* Gradient overlay */}
 				<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
-				{/* Champion info */}
-				<div className="absolute bottom-0 left-0 right-0 p-4">
-					<h3 className="text-2xl font-bold text-white">{champion.name}</h3>
-
-					{/* Using the new ChampionStatusBadges component */}
-					<ChampionStatusBadges champion={champion} />
-				</div>
-
 				{score && (
 					<div
 						className={
@@ -73,13 +80,18 @@ export const ChampionCard: React.FC<{ champion: Champion; rank?: number }> = ({
 						<div className="text-sm text-white/80"></div>
 					</div>
 
-					<ChampionStatusBadges champion={champion} />
+					<ChampionStatusBadges
+						hasBuffs={analysis.hasBuffs}
+						hasNerfs={analysis.hasNerfs}
+						buffCount={analysis.buffCount}
+						nerfCount={analysis.nerfCount}
+					/>
 				</div>
 			</div>
 
 			{/* Stats section */}
 			<div className="space-y-3 p-4">
-				{Object.entries(champion.aram).map(([key, value]) => {
+				{Object.entries(stats).map(([key, value]) => {
 					if (value === 1) return null
 
 					const statConfig = {

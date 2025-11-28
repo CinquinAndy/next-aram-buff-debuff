@@ -88,7 +88,8 @@ export class WikiDataService {
 	public async getDataFromCache(): Promise<WikiFetchResult> {
 		console.info('WikiDataService: Reading data from PocketBase cache')
 
-		const pbData = await this.pocketbaseService.getData()
+		// Use noCache=true to always get fresh data from PocketBase
+		const pbData = await this.pocketbaseService.getData(true)
 
 		if (!pbData) {
 			throw new Error(

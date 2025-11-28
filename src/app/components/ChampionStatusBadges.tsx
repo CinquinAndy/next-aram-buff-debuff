@@ -1,17 +1,23 @@
 'use client'
 
-import { Champion } from '@/app/lib/types'
 import { ArrowDownCircle, Sparkles, Equal } from 'lucide-react'
-import { analyzeChampionStats } from '@/app/utils/aramUtils'
+
+interface ChampionStatusBadgesProps {
+	hasBuffs: boolean
+	hasNerfs: boolean
+	buffCount: number
+	nerfCount: number
+}
 
 /**
  * Status badges component for champion card
  */
-export const ChampionStatusBadges = ({ champion }: { champion: Champion }) => {
-	const { hasBuffs, hasNerfs, buffCount, nerfCount } = analyzeChampionStats(
-		champion.aram
-	)
-
+export const ChampionStatusBadges = ({
+	hasBuffs,
+	hasNerfs,
+	buffCount,
+	nerfCount,
+}: ChampionStatusBadgesProps) => {
 	return (
 		<div className="mt-2 flex gap-2">
 			{hasBuffs && (
