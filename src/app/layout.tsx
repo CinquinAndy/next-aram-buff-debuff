@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import Link from 'next/link'
+import RefreshPopup from '@/app/components/RefreshPopup'
 
 const geistSans = localFont({
 	src: './fonts/GeistVF.woff',
@@ -30,6 +31,7 @@ export default function RootLayout({
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
 				{children}
+				<RefreshPopup />
 				<Link
 					href={'https://forhives.fr'}
 					className={

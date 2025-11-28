@@ -69,6 +69,37 @@ export class WikiDataService {
 		}
 	}
 
+	/**
+	 * Get data from PocketBase ONLY (no scraping)
+	 * This is used by the main application to read cached data
+	 * @throws Error if no data available in PocketBase
+	 */
+	public async getDataFromCache(): Promise<WikiFetchResult> {
+		console.info('WikiDataService: Reading data from PocketBase cache')
+
+		const pbData = await this.pocketbaseService.getData()
+
+		if (!pbData) {
+			throw new Error(
+				'No data available in PocketBase. Please call /api/refresh to populate the cache.'
+			)
+		}
+
+		console.info('WikiDataService: Returning PocketBase data', {
+			age: Date.now() - pbData.timestamp,
+			patchVersion: pbData.patchVersion,
+			championsCount: Object.keys(pbData.data).length,
+		})
+
+		await this.ensureChampionImages(pbData.data)
+		return pbData
+	}
+
+	/**
+	 * Force refresh data from wiki (scraping + save to PocketBase)
+	 * This should ONLY be called by /api/refresh endpoint
+	 * @param options Fetch options
+	 */
 	public async getData(
 		options: WikiFetchOptions = {}
 	): Promise<WikiFetchResult> {
@@ -79,22 +110,20 @@ export class WikiDataService {
 
 		console.info('WikiDataService: Getting ARAM data', { forceRefresh, maxAge })
 
-		// Check PocketBase first
-		const pbData = await this.pocketbaseService.getData()
-		if (
-			!forceRefresh &&
-			pbData &&
-			!this.isCacheStale(pbData.timestamp, maxAge)
-		) {
-			console.info('WikiDataService: Returning PocketBase data', {
-				age: Date.now() - pbData.timestamp,
-				patchVersion: pbData.patchVersion,
-			})
-			await this.ensureChampionImages(pbData.data)
-			return pbData
+		// Check PocketBase first if not forcing refresh
+		if (!forceRefresh) {
+			const pbData = await this.pocketbaseService.getData()
+			if (pbData && !this.isCacheStale(pbData.timestamp, maxAge)) {
+				console.info('WikiDataService: Returning fresh PocketBase data', {
+					age: Date.now() - pbData.timestamp,
+					patchVersion: pbData.patchVersion,
+				})
+				await this.ensureChampionImages(pbData.data)
+				return pbData
+			}
 		}
 
-		// Fetch fresh data
+		// Fetch fresh data from wiki
 		try {
 			console.info('WikiDataService: Fetching fresh data from wiki')
 			const freshData = await HttpService.fetchWithProxy(PROXY_CONFIG.WIKI_URL)
@@ -124,6 +153,8 @@ export class WikiDataService {
 		} catch (error) {
 			console.error('WikiDataService: Error fetching data', error)
 
+			// Try to return stale data as fallback
+			const pbData = await this.pocketbaseService.getData()
 			if (pbData) {
 				console.warn(
 					'WikiDataService: Using stale PocketBase data due to fetch error'

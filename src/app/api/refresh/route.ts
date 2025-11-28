@@ -1,11 +1,13 @@
 /**
  * API route to manually refresh ARAM data from the wiki
- * This endpoint forces a fresh scrape and updates PocketBase
- * @module api/refresh-data
+ * This is the ONLY endpoint that triggers wiki scraping
+ * All other routes read from PocketBase cache
+ * @module api/refresh
  */
 
 import { NextResponse } from 'next/server'
 import { WikiDataService } from '@/app/services/WikiDataService'
+import { PocketBaseService } from '@/app/services/PocketBaseService'
 
 export async function POST(request: Request) {
 	try {
@@ -19,6 +21,25 @@ export async function POST(request: Request) {
 		if (refreshSecret && authHeader !== `Bearer ${refreshSecret}`) {
 			console.warn('API: Unauthorized refresh attempt')
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+		}
+
+		// Check current data age before refreshing
+		const pbService = PocketBaseService.getInstance()
+		const existingData = await pbService.getData()
+
+		if (existingData) {
+			const age = Date.now() - existingData.timestamp
+			const ageInHours = Math.floor(age / (1000 * 60 * 60))
+			const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
+
+			console.info('API: Current data age', {
+				age,
+				ageInHours,
+				isOlderThan24h: age > TWENTY_FOUR_HOURS,
+				patchVersion: existingData.patchVersion,
+			})
+		} else {
+			console.info('API: No existing data found, first refresh')
 		}
 
 		// Force refresh the data
