@@ -3,36 +3,27 @@
  * @module services/WikiDataService
  */
 
-import fs from 'fs'
-import path from 'path'
 import { ChampionData } from '@/app/lib/types'
 import { PROXY_CONFIG } from '@/app/config/proxy'
 import { HttpService } from './http'
 import { ImageService } from '@/app/services/ImageService'
+import {
+	PocketBaseService,
+	type WikiFetchResult,
+} from '@/app/services/PocketBaseService'
 
 interface WikiFetchOptions {
 	forceRefresh?: boolean
 	maxAge?: number
 }
 
-interface WikiFetchResult {
-	data: ChampionData
-	fromCache: boolean
-	timestamp: number
-	patchVersion?: string
-}
-
 export class WikiDataService {
 	private static instance: WikiDataService
-	private static readonly CACHE_DIR = path.join(process.cwd(), '.cache')
-	private static readonly CACHE_FILE = path.join(
-		WikiDataService.CACHE_DIR,
-		'wiki_data.json'
-	)
+	private pocketbaseService: PocketBaseService
 
 	private constructor() {
 		console.info('WikiDataService: Initializing service')
-		this.initCacheDir()
+		this.pocketbaseService = PocketBaseService.getInstance()
 	}
 
 	public static getInstance(): WikiDataService {
@@ -40,20 +31,6 @@ export class WikiDataService {
 			WikiDataService.instance = new WikiDataService()
 		}
 		return WikiDataService.instance
-	}
-
-	/**
-	 * Initialize cache directory if it doesn't exist
-	 */
-	private initCacheDir(): void {
-		try {
-			if (!fs.existsSync(WikiDataService.CACHE_DIR)) {
-				fs.mkdirSync(WikiDataService.CACHE_DIR, { recursive: true })
-				console.info('WikiDataService: Cache directory created')
-			}
-		} catch (error) {
-			console.warn('WikiDataService: Failed to create cache directory', error)
-		}
 	}
 
 	/**
@@ -102,18 +79,19 @@ export class WikiDataService {
 
 		console.info('WikiDataService: Getting ARAM data', { forceRefresh, maxAge })
 
-		// Check cache first
-		const cachedData = this.getFromCache()
+		// Check PocketBase first
+		const pbData = await this.pocketbaseService.getData()
 		if (
 			!forceRefresh &&
-			cachedData &&
-			!this.isCacheStale(cachedData.timestamp, maxAge)
+			pbData &&
+			!this.isCacheStale(pbData.timestamp, maxAge)
 		) {
-			console.info('WikiDataService: Returning cached data', {
-				age: Date.now() - cachedData.timestamp,
-				patchVersion: cachedData.patchVersion,
+			console.info('WikiDataService: Returning PocketBase data', {
+				age: Date.now() - pbData.timestamp,
+				patchVersion: pbData.patchVersion,
 			})
-			return cachedData
+			await this.ensureChampionImages(pbData.data)
+			return pbData
 		}
 
 		// Fetch fresh data
@@ -126,7 +104,7 @@ export class WikiDataService {
 			console.info('WikiDataService: Parsing wiki data')
 			const parsedData = this.parseWikiData(freshData)
 
-			// Cache the results
+			// Save to PocketBase
 			const result: WikiFetchResult = {
 				data: parsedData,
 				fromCache: false,
@@ -134,8 +112,8 @@ export class WikiDataService {
 				patchVersion,
 			}
 
-			this.saveToCache(result)
-			console.info('WikiDataService: Fresh data fetched and cached', {
+			await this.pocketbaseService.saveData(result)
+			console.info('WikiDataService: Fresh data fetched and saved', {
 				championsCount: Object.keys(parsedData).length,
 				patchVersion,
 			})
@@ -146,10 +124,13 @@ export class WikiDataService {
 		} catch (error) {
 			console.error('WikiDataService: Error fetching data', error)
 
-			if (cachedData) {
-				console.warn('WikiDataService: Using stale cache due to fetch error')
+			if (pbData) {
+				console.warn(
+					'WikiDataService: Using stale PocketBase data due to fetch error'
+				)
+				await this.ensureChampionImages(pbData.data)
 				return {
-					...cachedData,
+					...pbData,
 					fromCache: true,
 				}
 			}
@@ -161,32 +142,6 @@ export class WikiDataService {
 	private extractPatchVersion(content: string): string | undefined {
 		const patchMatch = content.match(/\["changes"\]\s*=\s*"(V\d+\.\d+)"/)
 		return patchMatch?.[1]
-	}
-
-	private getFromCache(): WikiFetchResult | null {
-		try {
-			if (!fs.existsSync(WikiDataService.CACHE_FILE)) {
-				return null
-			}
-
-			const fileContent = fs.readFileSync(WikiDataService.CACHE_FILE, 'utf-8')
-			return JSON.parse(fileContent) as WikiFetchResult
-		} catch (error) {
-			console.warn('WikiDataService: Cache read error', error)
-			return null
-		}
-	}
-
-	private saveToCache(data: WikiFetchResult): void {
-		try {
-			fs.writeFileSync(
-				WikiDataService.CACHE_FILE,
-				JSON.stringify(data, null, 2),
-				'utf-8'
-			)
-		} catch (error) {
-			console.warn('WikiDataService: Cache write error', error)
-		}
 	}
 
 	private isCacheStale(timestamp: number, maxAge: number): boolean {
