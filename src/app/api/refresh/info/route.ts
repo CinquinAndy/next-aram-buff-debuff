@@ -7,12 +7,15 @@
 import { NextResponse } from 'next/server'
 import { PocketBaseService } from '@/app/services/PocketBaseService'
 
+// Force dynamic rendering to avoid caching
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
 	try {
 		console.info('API: Data info endpoint called')
 
 		const pbService = PocketBaseService.getInstance()
-		const data = await pbService.getData()
+		const data = await pbService.getData(true) // Force fresh fetch
 
 		if (!data) {
 			return NextResponse.json(
@@ -33,10 +36,16 @@ export async function GET() {
 			patchVersion: data.patchVersion,
 		})
 
+		// Get a sample champion for debugging
+		const championIds = Object.keys(data.data)
+		const sampleChampion = championIds.length > 0 ? data.data[championIds[0]] : null
+
 		return NextResponse.json({
 			age, // in milliseconds
 			patchVersion: data.patchVersion,
 			lastUpdate: new Date(data.timestamp),
+			championsCount: championIds.length,
+			sample: sampleChampion,
 		})
 	} catch (error) {
 		console.error('API: Error fetching data info:', error)

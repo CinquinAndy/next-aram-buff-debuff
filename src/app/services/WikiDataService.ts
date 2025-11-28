@@ -1,9 +1,17 @@
 /**
- * Service for fetching and parsing League of Legends ARAM data from the LoL Wiki
+ * Service for fetching and parsing League of Legends champion data from the LoL Wiki
+ * Supports all game modes (ARAM, URF, USB, etc.) and full champion stats
  * @module services/WikiDataService
  */
 
-import { ChampionData } from '@/app/lib/types'
+import {
+	ChampionData,
+	FullChampionData,
+	GameModeStats,
+	GameModeModifiers,
+	ChampionBaseStats,
+	AramStats,
+} from '@/app/lib/types'
 import { PROXY_CONFIG } from '@/app/config/proxy'
 import { HttpService } from './http'
 import { ImageService } from '@/app/services/ImageService'
@@ -16,6 +24,9 @@ interface WikiFetchOptions {
 	forceRefresh?: boolean
 	maxAge?: number
 }
+
+// Known game modes in the wiki data
+const GAME_MODES = ['aram', 'urf', 'usb', 'ofa', 'nb', 'ar'] as const
 
 export class WikiDataService {
 	private static instance: WikiDataService
@@ -108,7 +119,10 @@ export class WikiDataService {
 			maxAge = PROXY_CONFIG.CACHE.DEFAULT_MAX_AGE,
 		} = options
 
-		console.info('WikiDataService: Getting ARAM data', { forceRefresh, maxAge })
+		console.info('WikiDataService: Getting champion data', {
+			forceRefresh,
+			maxAge,
+		})
 
 		// Check PocketBase first if not forcing refresh
 		if (!forceRefresh) {
@@ -180,10 +194,180 @@ export class WikiDataService {
 	}
 
 	/**
-	 * Extracts ARAM stats from a champion's data block
+	 * Extract a string value from a Lua block
 	 */
-	private extractAramStats(championBlock: string): any {
-		const defaultStats = {
+	private extractString(block: string, key: string): string | undefined {
+		const regex = new RegExp(`\\["${key}"\\]\\s*=\\s*"([^"]*)"`)
+		const match = block.match(regex)
+		return match?.[1]
+	}
+
+	/**
+	 * Extract a number value from a Lua block
+	 */
+	private extractNumber(block: string, key: string): number | undefined {
+		const regex = new RegExp(`\\["${key}"\\]\\s*=\\s*([+-]?\\d*\\.?\\d+)`)
+		const match = block.match(regex)
+		return match ? parseFloat(match[1]) : undefined
+	}
+
+	/**
+	 * Extract an array of strings from a Lua block (e.g., roles, positions)
+	 */
+	private extractStringArray(block: string, key: string): string[] | undefined {
+		const regex = new RegExp(`\\["${key}"\\]\\s*=\\s*\\{([^}]*)\\}`)
+		const match = block.match(regex)
+		if (!match) return undefined
+
+		const items: string[] = []
+		const itemRegex = /"([^"]+)"/g
+		let itemMatch
+		while ((itemMatch = itemRegex.exec(match[1])) !== null) {
+			items.push(itemMatch[1])
+		}
+		return items.length > 0 ? items : undefined
+	}
+
+	/**
+	 * Extract the full stats block content from a champion block
+	 */
+	private extractStatsBlock(championBlock: string): string | null {
+		// Match the stats block which can have nested objects
+		const statsStart = championBlock.indexOf('["stats"]')
+		if (statsStart === -1) return null
+
+		let depth = 0
+		let start = -1
+		let end = -1
+
+		for (let i = statsStart; i < championBlock.length; i++) {
+			if (championBlock[i] === '{') {
+				if (start === -1) start = i
+				depth++
+			} else if (championBlock[i] === '}') {
+				depth--
+				if (depth === 0) {
+					end = i + 1
+					break
+				}
+			}
+		}
+
+		if (start !== -1 && end !== -1) {
+			return championBlock.substring(start, end)
+		}
+		return null
+	}
+
+	/**
+	 * Extract base stats from the stats block
+	 */
+	private extractBaseStats(statsBlock: string): Partial<ChampionBaseStats> {
+		const stats: Partial<ChampionBaseStats> = {}
+
+		const statKeys: (keyof ChampionBaseStats)[] = [
+			'hp_base',
+			'hp_lvl',
+			'mp_base',
+			'mp_lvl',
+			'arm_base',
+			'arm_lvl',
+			'mr_base',
+			'mr_lvl',
+			'hp5_base',
+			'hp5_lvl',
+			'mp5_base',
+			'mp5_lvl',
+			'dam_base',
+			'dam_lvl',
+			'as_base',
+			'as_lvl',
+			'range',
+			'ms',
+			'acquisition_radius',
+			'selection_height',
+			'selection_radius',
+			'pathing_radius',
+			'as_ratio',
+			'attack_cast_time',
+			'attack_total_time',
+			'attack_delay_offset',
+			'missile_speed',
+		]
+
+		for (const key of statKeys) {
+			const value = this.extractNumber(statsBlock, key)
+			if (value !== undefined) {
+				stats[key] = value
+			}
+		}
+
+		return stats
+	}
+
+	/**
+	 * Extract game mode modifiers from the stats block
+	 */
+	private extractGameModeStats(
+		statsBlock: string,
+		mode: string
+	): GameModeStats | undefined {
+		// Find the mode block within stats
+		const modeRegex = new RegExp(`\\["${mode}"\\]\\s*=\\s*\\{([^}]+)\\}`)
+		const match = statsBlock.match(modeRegex)
+		if (!match) return undefined
+
+		const modeBlock = match[1]
+		const stats: GameModeStats = {}
+
+		// Known stat modifiers for game modes
+		const modifierKeys = [
+			'dmg_dealt',
+			'dmg_taken',
+			'healing',
+			'shielding',
+			'ability_haste',
+			'attack_speed',
+			'energy_regen',
+			'tenacity',
+		]
+
+		const statRegex = /\["?([^"\]]+)"?\]\s*=\s*([+-]?\d*\.?\d+)/g
+		let statMatch
+
+		while ((statMatch = statRegex.exec(modeBlock)) !== null) {
+			const key = statMatch[1].trim().toLowerCase()
+			const value = parseFloat(statMatch[2])
+
+			if (!isNaN(value) && modifierKeys.includes(key)) {
+				stats[key as keyof GameModeStats] = value
+			}
+		}
+
+		return Object.keys(stats).length > 0 ? stats : undefined
+	}
+
+	/**
+	 * Extract all game mode modifiers
+	 */
+	private extractAllGameModes(statsBlock: string): GameModeModifiers {
+		const modes: GameModeModifiers = {}
+
+		for (const mode of GAME_MODES) {
+			const modeStats = this.extractGameModeStats(statsBlock, mode)
+			if (modeStats) {
+				modes[mode] = modeStats
+			}
+		}
+
+		return modes
+	}
+
+	/**
+	 * Convert game mode stats to legacy AramStats format for backward compatibility
+	 */
+	private gameModeToAramStats(modeStats?: GameModeStats): AramStats {
+		const defaultStats: AramStats = {
 			dmg_dealt: 1,
 			dmg_taken: 1,
 			healing: 1,
@@ -193,86 +377,103 @@ export class WikiDataService {
 			energy_regen: 1,
 		}
 
-		try {
-			const statsBlockMatch = championBlock.match(/\["stats"\]\s*=\s*{([^}]+)}/)
-			if (!statsBlockMatch) {
-				console.debug('No stats block found')
-				return defaultStats
-			}
+		if (!modeStats) return defaultStats
 
-			const statsBlock = statsBlockMatch[1]
-
-			console.debug('Stats block found --:', statsBlock.substring(0, 2500))
-
-			const aramBlockMatch = statsBlock.match(/\["aram"\]\s*=\s*{([^}]+)/)
-			if (!aramBlockMatch) {
-				console.debug('No ARAM block found in stats')
-				return defaultStats
-			}
-
-			const aramBlock = aramBlockMatch[1]
-			console.debug('ARAM block found:', aramBlock)
-
-			const stats = { ...defaultStats }
-
-			const statRegex = /\["?([^"\]]+)"?\]\s*=\s*([+-]?\d*\.?\d+)/g
-			let match
-
-			while ((match = statRegex.exec(aramBlock)) !== null) {
-				const [_, key, value] = match
-				console.debug('Found stat:', key, value)
-
-				const normalizedKey = key.trim().toLowerCase()
-				const mappedKey = this.mapStatKey(normalizedKey)
-
-				if (mappedKey && mappedKey in stats) {
-					const parsedValue = parseFloat(value)
-					if (!isNaN(parsedValue)) {
-						stats[mappedKey as keyof typeof stats] = parsedValue
-					}
-				}
-			}
-
-			const hasModifications = Object.entries(stats).some(
-				([key, value]) => value !== 1
-			)
-			if (hasModifications) {
-				console.debug('Found modifications:', stats)
-			}
-
-			return stats
-		} catch (error) {
-			console.error('Error extracting ARAM stats:', error)
-			return defaultStats
+		return {
+			dmg_dealt: modeStats.dmg_dealt ?? 1,
+			dmg_taken: modeStats.dmg_taken ?? 1,
+			healing: modeStats.healing ?? 1,
+			shielding: modeStats.shielding ?? 1,
+			ability_haste: modeStats.ability_haste ?? 1,
+			attack_speed: modeStats.attack_speed ?? 1,
+			energy_regen: modeStats.energy_regen ?? 1,
 		}
 	}
 
 	/**
-	 * Maps various stat key formats to standardized keys
+	 * Extract skills from champion block
 	 */
-	private mapStatKey(key: string): string | null {
-		const keyMap: { [key: string]: string } = {
-			dmg_dealt: 'dmg_dealt',
-			damage_dealt: 'dmg_dealt',
-			dmg_taken: 'dmg_taken',
-			damage_taken: 'dmg_taken',
-			healing: 'healing',
-			heal_power: 'healing',
-			shield_power: 'shielding',
-			shielding: 'shielding',
-			ability_haste: 'ability_haste',
-			attack_speed: 'attack_speed',
-			energy_regen: 'energy_regen',
-			// Ajout de variations possibles
-			dealt: 'dmg_dealt',
-			taken: 'dmg_taken',
-			heal: 'healing',
-			shield: 'shielding',
-			haste: 'ability_haste',
-			as: 'attack_speed',
+	private extractSkills(block: string): Record<string, string[]> | undefined {
+		const skills: Record<string, string[]> = {}
+		const skillKeys = ['skill_i', 'skill_q', 'skill_w', 'skill_e', 'skill_r']
+
+		for (const key of skillKeys) {
+			const skillArray = this.extractStringArray(block, key)
+			if (skillArray) {
+				skills[key] = skillArray
+			}
 		}
 
-		return keyMap[key] || null
+		// Also extract the 'skills' array
+		const mainSkills = this.extractStringArray(block, 'skills')
+		if (mainSkills) {
+			skills.skills = mainSkills
+		}
+
+		return Object.keys(skills).length > 0 ? skills : undefined
+	}
+
+	/**
+	 * Parse a single champion block and extract all data
+	 */
+	private parseChampionBlock(block: string): FullChampionData | null {
+		// Extract basic info
+		const id = this.extractNumber(block, 'id')
+		const apiname = this.extractString(block, 'apiname')
+
+		if (!id || !apiname) {
+			return null
+		}
+
+		const fullData: FullChampionData = {
+			id,
+			apiname,
+			title: this.extractString(block, 'title'),
+			difficulty: this.extractNumber(block, 'difficulty'),
+			herotype: this.extractString(block, 'herotype'),
+			alttype: this.extractString(block, 'alttype'),
+			resource: this.extractString(block, 'resource'),
+			rangetype: this.extractString(block, 'rangetype'),
+			date: this.extractString(block, 'date'),
+			patch: this.extractString(block, 'patch'),
+			changes: this.extractString(block, 'changes'),
+			adaptivetype: this.extractString(block, 'adaptivetype'),
+			damage: this.extractNumber(block, 'damage'),
+			toughness: this.extractNumber(block, 'toughness'),
+			control: this.extractNumber(block, 'control'),
+			mobility: this.extractNumber(block, 'mobility'),
+			utility: this.extractNumber(block, 'utility'),
+			style: this.extractNumber(block, 'style'),
+			be: this.extractNumber(block, 'be'),
+			rp: this.extractNumber(block, 'rp'),
+			role: this.extractStringArray(block, 'role'),
+			client_positions: this.extractStringArray(block, 'client_positions'),
+			external_positions: this.extractStringArray(block, 'external_positions'),
+		}
+
+		// Extract stats block
+		const statsBlock = this.extractStatsBlock(block)
+		if (statsBlock) {
+			// Extract base stats
+			const baseStats = this.extractBaseStats(statsBlock)
+			if (Object.keys(baseStats).length > 0) {
+				fullData.stats = baseStats as ChampionBaseStats
+			}
+
+			// Extract all game mode modifiers
+			const gameModes = this.extractAllGameModes(statsBlock)
+			if (Object.keys(gameModes).length > 0) {
+				fullData.gameModes = gameModes
+			}
+		}
+
+		// Extract skills
+		const skills = this.extractSkills(block)
+		if (skills) {
+			fullData.skills = skills
+		}
+
+		return fullData
 	}
 
 	/**
@@ -288,49 +489,65 @@ export class WikiDataService {
 				throw new Error('No Lua data found in wiki page')
 			}
 
-			console.debug('First 1500 chars of Lua data:', luaData.substring(0, 1500))
-
-			const championMatches = luaData.matchAll(
-				/\[\"([^"]+)\"\]\s*=\s*{((?:[^{}]|{(?:[^{}]|{[^{}]*})*})*?)}/g
+			console.debug(
+				'First 1500 chars of Lua data:',
+				luaData.substring(0, 1500)
 			)
 
-			for (const match of championMatches) {
+			// Improved regex to match champion blocks with nested structures
+			const championRegex =
+				/\["([^"]+)"\]\s*=\s*\{((?:[^{}]|\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})*)\}/g
+			let match
+
+			let championsWithModifications = 0
+			const modeStats: Record<string, number> = {}
+
+			while ((match = championRegex.exec(luaData)) !== null) {
 				const [_, championKey, block] = match
 
-				// Extract basic info
-				const idMatch = block.match(/\["id"\]\s*=\s*(\d+)/)
-				const nameMatch = block.match(/\["apiname"\]\s*=\s*"([^"]+)"/)
-
-				if (!idMatch || !nameMatch) {
-					console.debug(`Skipping champion ${championKey} - missing basic info`)
+				const fullData = this.parseChampionBlock(block)
+				if (!fullData) {
+					console.debug(
+						`Skipping champion ${championKey} - missing basic info`
+					)
 					continue
 				}
 
-				const id = idMatch[1]
-				const championName = nameMatch[1]
+				const id = fullData.id.toString()
+				const aramStats = this.gameModeToAramStats(fullData.gameModes?.aram)
 
-				console.debug(`Processing champion: ${championName} (ID: ${id})`)
-
-				// Extract ARAM stats
-				const aramStats = this.extractAramStats(block)
-
-				championData[id] = {
-					id: id,
-					name: championName,
-					aram: aramStats,
+				// Check if this champion has any game mode modifications
+				if (fullData.gameModes) {
+					const hasMods = Object.values(fullData.gameModes).some(
+						mode => mode && Object.keys(mode).length > 0
+					)
+					if (hasMods) {
+						championsWithModifications++
+						// Track which modes have data
+						for (const mode of Object.keys(fullData.gameModes)) {
+							modeStats[mode] = (modeStats[mode] || 0) + 1
+						}
+					}
 				}
 
-				// Log detailed info if modifications found
+				championData[id] = {
+					id,
+					name: fullData.apiname,
+					aram: aramStats,
+					fullData,
+				}
+
+				// Log detailed info if ARAM modifications found
 				if (Object.values(aramStats).some(value => value !== 1)) {
-					console.info(`Found ARAM modifications for ${championName}:`, {
+					console.debug(`Found ARAM modifications for ${fullData.apiname}:`, {
 						id,
-						stats: aramStats,
+						aram: aramStats,
 					})
 				}
 			}
 
 			const totalChampions = Object.keys(championData).length
-			const modifiedChampions = Object.values(championData).filter(champ =>
+			const aramModifiedChampions = Object.values(championData).filter(champ =>
 				Object.values(champ.aram).some(value => value !== 1)
 			).length
 
@@ -338,27 +555,17 @@ export class WikiDataService {
 				`WikiDataService: Successfully parsed ${totalChampions} champions`
 			)
 			console.info(
-				`WikiDataService: Found ${modifiedChampions} champions with ARAM modifications`
+				`WikiDataService: Found ${championsWithModifications} champions with game mode modifications`
 			)
+			console.info(
+				`WikiDataService: Found ${aramModifiedChampions} champions with ARAM modifications`
+			)
+			console.info('WikiDataService: Game mode statistics:', modeStats)
 
-			if (modifiedChampions === 0) {
+			if (aramModifiedChampions === 0) {
 				console.warn(
 					'No ARAM modifications found. This might indicate a parsing issue.'
 				)
-				const firstChampId = Object.keys(championData)[0]
-				if (firstChampId) {
-					console.debug(
-						'Example champion data:',
-						championData[firstChampId],
-						'Raw data sample:',
-						luaData.match(
-							new RegExp(
-								`\\["${championData[firstChampId].name}"\\].*?stats.*?aram.*?}`,
-								's'
-							)
-						)
-					)
-				}
 			}
 
 			return championData

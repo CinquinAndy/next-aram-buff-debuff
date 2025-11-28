@@ -82,21 +82,29 @@ export class PocketBaseService {
 
 	/**
 	 * Retrieve the latest ARAM data from PocketBase
+	 * @param noCache - If true, bypass Next.js cache
 	 * @returns WikiFetchResult or null if not found
 	 */
-	public async getData(): Promise<WikiFetchResult | null> {
+	public async getData(noCache: boolean = false): Promise<WikiFetchResult | null> {
 		try {
-			console.info('PocketBaseService: Fetching data from PocketBase')
+			console.info('PocketBaseService: Fetching data from PocketBase', { noCache })
 
 			const url = this.getUrl(
 				`${POCKETBASE_CONFIG.ENDPOINTS.RECORDS}/${POCKETBASE_CONFIG.RECORD_ID}`
 			)
 
-			const response = await fetch(url, {
+			const fetchOptions: RequestInit & { next?: { revalidate?: number } } = {
 				method: 'GET',
 				headers: this.getHeaders(),
-				next: { revalidate: 3600 }, // Cache for 1 hour
-			})
+			}
+
+			if (noCache) {
+				fetchOptions.cache = 'no-store'
+			} else {
+				fetchOptions.next = { revalidate: 3600 } // Cache for 1 hour
+			}
+
+			const response = await fetch(url, fetchOptions)
 
 			if (!response.ok) {
 				if (response.status === 404) {
