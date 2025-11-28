@@ -1,7 +1,6 @@
 'use client'
 
 import { AramStats, Champion } from '@/app/lib/types'
-import { motion } from 'framer-motion'
 import {
 	ArrowUpNarrowWide,
 	Droplet,
@@ -43,13 +42,7 @@ export const ChampionCard: React.FC<ChampionCardProps> = ({
 	const analysis = analyzeChampionStats(stats)
 
 	return (
-		<motion.div
-			layout
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			exit={{ opacity: 0 }}
-			className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-lg"
-		>
+		<div className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-lg transition-shadow duration-300 hover:shadow-xl">
 			{/* Champion image and header */}
 			<div className="relative h-48 overflow-hidden">
 				<Image
@@ -117,11 +110,11 @@ export const ChampionCard: React.FC<ChampionCardProps> = ({
 					)
 				})}
 				{!hasModifications && (
-					<div className="group relative overflow-hidden rounded-xl border border-slate-200/10 bg-gradient-to-r from-gray-50 to-white p-3 py-5">
-						perfectly balanced, as all things should be
+					<div className="rounded-lg border border-white/10 bg-white/5 p-3 py-4 text-center text-sm text-white/60">
+						✨ Perfectly balanced
 					</div>
 				)}
 			</div>
-		</motion.div>
+		</div>
 	)
 }

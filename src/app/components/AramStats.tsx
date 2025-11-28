@@ -1,8 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Champion } from '@/app/lib/types'
+import { Champion, AramStats } from '@/app/lib/types'
 import { Header } from '@/app/components/Header'
 import { ChampionCard } from '@/app/components/ChampionCard'
 import {
@@ -15,6 +14,12 @@ import {
 	type GameMode,
 } from '@/app/components/GameModeSelector'
 import Link from 'next/link'
+import { ModificationScore } from '@/app/lib/types'
+
+interface ChampionWithScore extends Champion {
+	score: ModificationScore
+	currentModeStats: AramStats
+}
 
 export default function AramGrid({
 	championsData,
@@ -37,27 +42,40 @@ export default function AramGrid({
 		[championsData]
 	)
 
-	const sortedChampions = useMemo(() => {
-		const champions = Object.entries(championsData)
+	// Base list of champions (sorted by name by default, stable order)
+	const baseChampionsList = useMemo(() => {
+		return Object.entries(championsData)
 			.map(([id, data]) => ({
 				...data,
 				id,
-				score: calculateModificationScoreForMode(data, selectedMode),
-				currentModeStats: getGameModeStats(data, selectedMode),
 			}))
-			.filter(champion => {
-				const matchesSearch = champion.name
-					.toLowerCase()
-					.includes(searchTerm.toLowerCase())
-				return matchesSearch
-			})
+			.sort((a, b) => a.name.localeCompare(b.name)) // Always alphabetical base
+	}, [championsData])
 
-		return champions.sort((a, b) => {
+	// Filter and sort based on user preferences
+	const sortedChampions = useMemo(() => {
+		// Filter by search term
+		const filtered = baseChampionsList.filter(champion =>
+			champion.name.toLowerCase().includes(searchTerm.toLowerCase())
+		)
+
+		// Add mode-specific stats for display
+		const withStats = filtered.map(champion => ({
+			...champion,
+			score: calculateModificationScoreForMode(champion, selectedMode),
+			currentModeStats: getGameModeStats(champion, selectedMode),
+		}))
+
+		// Sort based on user selection
+		if (sortBy === 'name') {
+			// Already sorted alphabetically, just apply direction
+			return sortDirection === 'desc' ? [...withStats].reverse() : withStats
+		}
+
+		// Sort by score-based criteria
+		return withStats.sort((a, b) => {
 			let comparison = 0
 			switch (sortBy) {
-				case 'name':
-					comparison = a.name.localeCompare(b.name)
-					break
 				case 'totalImpact':
 					comparison = Math.abs(b.score.total) - Math.abs(a.score.total)
 					break
@@ -72,7 +90,7 @@ export default function AramGrid({
 			}
 			return sortDirection === 'asc' ? comparison : -comparison
 		})
-	}, [championsData, searchTerm, sortBy, sortDirection, selectedMode])
+	}, [baseChampionsList, searchTerm, sortBy, sortDirection, selectedMode])
 
 	return (
 		<div className="h-full min-h-screen bg-gradient-to-br from-[#0a1528] from-20% to-[#73551a]">
@@ -94,19 +112,17 @@ export default function AramGrid({
 			</Header>
 
 			<main className="mx-auto max-w-7xl px-4 py-6">
-				<AnimatePresence mode="popLayout">
-					<motion.div className="grid auto-rows-auto grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
-						{sortedChampions.map((champion, index) => (
-							<ChampionCard
-								key={`${champion.id}-${selectedMode}`}
-								champion={champion}
-								rank={index + 1}
-								gameMode={selectedMode}
-								gameModeStats={champion.currentModeStats}
-							/>
-						))}
-					</motion.div>
-				</AnimatePresence>
+				<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					{sortedChampions.map((champion, index) => (
+						<ChampionCard
+							key={`${champion.id}-${selectedMode}`}
+							champion={champion}
+							rank={index + 1}
+							gameMode={selectedMode}
+							gameModeStats={champion.currentModeStats}
+						/>
+					))}
+				</div>
 			</main>
 
 			<Link
