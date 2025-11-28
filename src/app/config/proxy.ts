@@ -17,24 +17,24 @@ export const PROXY_CONFIG = {
 
 	/**
 	 * HTTP headers to use for wiki requests
+	 * These headers match a working browser request to bypass Cloudflare
 	 */
 	REQUEST_HEADERS: {
 		accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+		'accept-language': 'en-US,en;q=0.5',
 		'accept-encoding': 'gzip, deflate, br, zstd',
-		'accept-language': 'fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3',
+		referer: 'https://wiki.leagueoflegends.com/en-us/Ultra_Rapid_Fire',
 		'alt-used': 'wiki.leagueoflegends.com',
 		connection: 'keep-alive',
-		dnt: '1',
-		host: 'wiki.leagueoflegends.com',
-		priority: 'u=0, i',
+		'upgrade-insecure-requests': '1',
 		'sec-fetch-dest': 'document',
 		'sec-fetch-mode': 'navigate',
-		'sec-fetch-site': 'none',
-		'sec-fetch-user': '?1',
-		'sec-gpc': '1',
-		'upgrade-insecure-requests': '1',
+		'sec-fetch-site': 'same-origin',
+		priority: 'u=0, i',
+		pragma: 'no-cache',
+		'cache-control': 'no-cache',
 		'user-agent':
-			'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0',
+			'Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0',
 	},
 	/**
 	 * Cache configuration
