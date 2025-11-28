@@ -95,7 +95,7 @@ export default function AramGrid({
 
 			<main className="mx-auto max-w-7xl px-4 py-6">
 				<AnimatePresence mode="popLayout">
-					<motion.div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+					<motion.div className="grid auto-rows-auto grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						{sortedChampions.map((champion, index) => (
 							<ChampionCard
 								key={`${champion.id}-${selectedMode}`}
