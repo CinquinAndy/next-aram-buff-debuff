@@ -72,6 +72,12 @@ This project uses **Biome** (not ESLint/Prettier). Configuration in `biome.json`
 5. **HttpService** (`src/app/services/http.ts`):
    - Handles HTTP requests with custom headers for wiki scraping
    - Configuration in `src/app/config/proxy.ts`
+   - Falls back to Playwright if direct requests fail
+
+6. **PlaywrightService** (`src/app/services/PlaywrightService.ts`):
+   - Headless browser service to bypass Cloudflare protection
+   - Uses Chromium to simulate real browser behavior
+   - Automatically used as fallback when fetch fails
 
 ### API Routes
 

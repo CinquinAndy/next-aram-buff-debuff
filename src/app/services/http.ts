@@ -3,13 +3,14 @@
  * @module services/HttpService
  */
 import { PROXY_CONFIG } from '@/app/config/proxy'
+import { PlaywrightService } from './PlaywrightService'
 
 export class HttpService {
 	private static cookieCache: string | null = null
 	private static cookieExpiry: number = 0
 
 	/**
-	 * Fetches data through multiple proxy services with fallback
+	 * Fetches data through multiple proxy services with fallback to Playwright
 	 */
 	static async fetchWithProxy(targetUrl: string): Promise<string> {
 		const encodedUrl = targetUrl
@@ -71,14 +72,32 @@ export class HttpService {
 			}
 		}
 
+		// Final fallback: Use Playwright (headless browser)
+		try {
+			console.info('HttpService: Falling back to Playwright')
+			const text = await PlaywrightService.fetchHtml(encodedUrl)
+			console.info('HttpService: Successfully fetched data with Playwright')
+			return text
+		} catch (error) {
+			console.error('HttpService: Playwright failed:', error)
+			lastError = error as Error
+		}
+
 		throw lastError || new Error('All fetch attempts failed')
 	}
 
 	/**
-	 * Gets cookies by making an initial request to the wiki
+	 * Gets cookies from environment variable or by making an initial request
 	 * Caches cookies for 30 minutes
 	 */
 	private static async getCookies(): Promise<string | null> {
+		// First, check for manually configured cookies in environment
+		const envCookies = process.env.WIKI_COOKIES
+		if (envCookies) {
+			console.info('HttpService: Using cookies from environment')
+			return envCookies
+		}
+
 		// Check if cached cookies are still valid
 		if (this.cookieCache && Date.now() < this.cookieExpiry) {
 			console.info('HttpService: Using cached cookies')
