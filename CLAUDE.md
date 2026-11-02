@@ -52,8 +52,11 @@ This project uses **Biome** (not ESLint/Prettier). Configuration in `biome.json`
 2. **WikiDataService** (`src/app/services/WikiDataService.ts`):
    - Singleton service that scrapes League Wiki Lua data
    - Uses PocketBase for data persistence (replaces file-based cache)
-   - Default cache TTL: 12 hours
-   - Parses Lua tables from wiki HTML to extract ARAM stat modifications
+   - Default cache TTL: 24 hours (`PROXY_CONFIG.CACHE.DEFAULT_MAX_AGE`)
+   - Reads the raw Lua module (`Module:ChampionData/data?action=raw`; `?action=edit` is blocked by Cloudflare)
+   - Stale-while-revalidate: when the PocketBase data is older than the TTL, a page view starts a background
+     refresh (`after()`), one at a time, retried at most once an hour after a failure
+   - Patch version = the highest `["changes"]` value across champions (`src/app/lib/patchVersion.ts`)
    - Triggers `ImageService` to download champion splash arts
 
 3. **PocketBaseService** (`src/app/services/PocketBaseService.ts`):
