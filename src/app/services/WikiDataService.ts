@@ -13,6 +13,8 @@ import {
 	AramStats,
 } from '@/app/lib/types'
 import { PROXY_CONFIG } from '@/app/config/proxy'
+import { latestPatchVersion } from '@/app/lib/patchVersion'
+import { after } from 'next/server'
 import { HttpService } from './http'
 import { ImageService } from '@/app/services/ImageService'
 import {
@@ -28,9 +30,14 @@ interface WikiFetchOptions {
 // Known game modes in the wiki data
 const GAME_MODES = ['aram', 'urf', 'usb', 'ofa', 'nb', 'ar'] as const
 
+// Wait this long before retrying an automatic refresh that failed
+const REFRESH_RETRY_DELAY = 60 * 60 * 1000 // 1 hour
+
 export class WikiDataService {
 	private static instance: WikiDataService
 	private pocketbaseService: PocketBaseService
+	private backgroundRefresh: Promise<void> | null = null
+	private lastFailedRefreshAt = 0
 
 	private constructor() {
 		console.info('WikiDataService: Initializing service')
@@ -103,8 +110,51 @@ export class WikiDataService {
 			championsCount: Object.keys(pbData.data).length,
 		})
 
+		if (this.isCacheStale(pbData.timestamp, PROXY_CONFIG.CACHE.DEFAULT_MAX_AGE)) {
+			this.scheduleBackgroundRefresh()
+		}
+
 		await this.ensureChampionImages(pbData.data)
 		return pbData
+	}
+
+	/**
+	 * Refresh stale data from the wiki after the response is sent (stale-while-revalidate).
+	 * Nothing else refreshes the cache on its own, so without this the page keeps the data
+	 * of the last manual refresh forever. One refresh at a time, and a pause after a failure
+	 * so a broken scrape does not run on every page view.
+	 */
+	private scheduleBackgroundRefresh(): void {
+		if (this.backgroundRefresh) return
+		if (Date.now() - this.lastFailedRefreshAt < REFRESH_RETRY_DELAY) return
+
+		const refresh = async () => {
+			try {
+				const result = await this.getData({ forceRefresh: true })
+				if (result.fromCache) {
+					// getData fell back to the stale PocketBase data: the scrape failed
+					this.lastFailedRefreshAt = Date.now()
+					console.warn('WikiDataService: Background refresh failed, keeping stale data')
+				} else {
+					console.info('WikiDataService: Background refresh done', {
+						patchVersion: result.patchVersion,
+					})
+				}
+			} catch (error) {
+				this.lastFailedRefreshAt = Date.now()
+				console.error('WikiDataService: Background refresh failed', error)
+			} finally {
+				this.backgroundRefresh = null
+			}
+		}
+
+		this.backgroundRefresh = Promise.resolve().then(refresh)
+		const pending = this.backgroundRefresh
+		try {
+			after(() => pending)
+		} catch {
+			// Outside a request scope (scripts): the promise still runs on its own
+		}
 	}
 
 	/**
@@ -186,8 +236,7 @@ export class WikiDataService {
 	}
 
 	private extractPatchVersion(content: string): string | undefined {
-		const patchMatch = content.match(/\["changes"\]\s*=\s*"(V\d+\.\d+)"/)
-		return patchMatch?.[1]
+		return latestPatchVersion(content)
 	}
 
 	private isCacheStale(timestamp: number, maxAge: number): boolean {

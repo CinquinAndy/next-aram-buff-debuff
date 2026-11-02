@@ -13,7 +13,7 @@ export const PROXY_CONFIG = {
 	 * Target URL for the LoL Wiki data
 	 */
 	WIKI_URL:
-		'https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data?action=edit',
+		'https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data?action=raw',
 
 	/**
 	 * HTTP headers to use for wiki requests
