@@ -48,7 +48,7 @@
          │
          ▼
 ┌─────────────────────────────┐
-│  Playwright scrapes wiki    │
+│  Fetch wiki module page     │
 └────────┬────────────────────┘
          │
          ▼
@@ -86,7 +86,7 @@ bun scripts/test-scraping.ts
 ```
 
 This will:
-- ✅ Scrape the League of Legends wiki (using Playwright)
+- ✅ Read the League of Legends wiki module page (see SCRAPING_GUIDE.md)
 - ✅ Parse 170+ champions data
 - ✅ Save to PocketBase
 - ✅ Download champion splash arts
@@ -179,7 +179,7 @@ fetchAramData()
 // src/app/api/refresh/route.ts
 POST /api/refresh
   → WikiDataService.getData({ forceRefresh: true })
-  → HttpService.fetchWithProxy() (falls back to Playwright)
+  → HttpService.fetchText() (wiki page, then the donnees-wiki branch copy)
   → Parse Lua data
   → PocketBaseService.saveData()
   → ImageService.ensureChampionImages()
@@ -249,11 +249,11 @@ curl -X POST http://localhost:3000/api/refresh
 ### "PocketBase cache is empty"
 **Solution:** Call `POST /api/refresh` to populate
 
-### Playwright fails to scrape
+### Refresh fails (502 on /api/refresh)
 **Check:**
-1. Chromium installed: `npx playwright install chromium`
-2. System dependencies: See SCRAPING_GUIDE.md
-3. Network connectivity to wiki.leagueoflegends.com
+1. The logs: `HttpService: request refused` shows the status and Cloudflare headers
+2. The `donnees-wiki` branch copy is recent (workflow "Données du wiki")
+3. See SCRAPING_GUIDE.md
 
 ### Page loads slowly
 **Cause:** Images downloading on first load

@@ -46,19 +46,29 @@ export async function POST(request: Request) {
 		const wikiService = WikiDataService.getInstance()
 		const result = await wikiService.getData({ forceRefresh: true })
 
-		console.info('API: Data refreshed successfully', {
+		const summary = {
 			patchVersion: result.patchVersion,
+			dataRevision: result.dataRevision,
+			source: result.source,
+			timestamp: result.timestamp,
 			championsCount: Object.keys(result.data).length,
-		})
+		}
+
+		if (result.fromCache) {
+			// Every source failed or was rejected: the stored data was kept as is
+			console.warn('API: Refresh failed, stored data kept', summary)
+			return NextResponse.json(
+				{ success: false, error: 'No source gave valid data, stored data kept', data: summary },
+				{ status: 502 }
+			)
+		}
+
+		console.info('API: Data refreshed successfully', summary)
 
 		return NextResponse.json({
 			success: true,
 			message: 'Data refreshed successfully',
-			data: {
-				patchVersion: result.patchVersion,
-				timestamp: result.timestamp,
-				championsCount: Object.keys(result.data).length,
-			},
+			data: summary,
 		})
 	} catch (error) {
 		console.error('API: Error refreshing data:', error)

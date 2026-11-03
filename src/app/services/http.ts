@@ -1,173 +1,53 @@
 /**
- * Utility service for making HTTP requests with proxies
- * @module services/HttpService
+ * Plain HTTP fetch for the data sources: one request, an honest User-Agent, no browser imitation.
+ * @module services/http
  */
-import { PROXY_CONFIG } from '@/app/config/proxy'
-import { PlaywrightService } from './PlaywrightService'
+import { SOURCES_CONFIG, USER_AGENT } from '@/app/config/sources'
+
+export interface FetchedText {
+	text: string
+	/** Last-Modified header, when the server sends one */
+	lastModified?: string
+}
+
+export class HttpError extends Error {
+	constructor(
+		message: string,
+		public readonly status: number
+	) {
+		super(message)
+		this.name = 'HttpError'
+	}
+}
 
 export class HttpService {
-	private static cookieCache: string | null = null
-	private static cookieExpiry: number = 0
-
 	/**
-	 * Fetches data through multiple proxy services with fallback to Playwright
+	 * GET a text resource. On a non-2xx answer, logs what tells an IP block from a refused
+	 * request apart (status, server, cf-mitigated, cf-ray, start of the body) and throws.
 	 */
-	static async fetchWithProxy(targetUrl: string): Promise<string> {
-		const encodedUrl = targetUrl
-		let lastError: Error | null = null
+	static async fetchText(url: string, accept = 'text/html,text/plain;q=0.9,*/*;q=0.8'): Promise<FetchedText> {
+		const response = await fetch(url, {
+			headers: { 'user-agent': USER_AGENT, accept },
+			cache: 'no-store',
+			signal: AbortSignal.timeout(SOURCES_CONFIG.FETCH_TIMEOUT_MS),
+		})
 
-		// Try direct request with cookie management first
-		try {
-			console.info('HttpService: Trying direct request with cookie management')
-
-			// Get or refresh cookies
-			const cookies = await this.getCookies()
-
-			const headers = {
-				...PROXY_CONFIG.REQUEST_HEADERS,
-				...(cookies ? { cookie: cookies } : {}),
-			}
-
-			const response = await fetch(encodedUrl, {
-				headers,
+		if (!response.ok) {
+			const body = await response.text().catch(() => '')
+			console.warn('HttpService: request refused', {
+				url,
+				status: response.status,
+				server: response.headers.get('server'),
+				cfMitigated: response.headers.get('cf-mitigated'),
+				cfRay: response.headers.get('cf-ray'),
+				body: body.slice(0, 200),
 			})
-
-			console.info(`HttpService: Response status ${response.status}`)
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`)
-			}
-
-			const text = await response.text()
-			console.info('HttpService: Successfully fetched data directly')
-			return text
-		} catch (error) {
-			console.warn('HttpService: Direct request failed:', error)
-			lastError = error as Error
+			throw new HttpError(`HTTP ${response.status} for ${url}`, response.status)
 		}
 
-		// Fallback to proxy URLs if configured
-		for (const proxyUrl of PROXY_CONFIG.PROXY_URLS) {
-			if (!proxyUrl) continue
-
-			try {
-				console.info(`HttpService: Trying proxy ${proxyUrl}`)
-				const response = await fetch(proxyUrl + encodedUrl, {
-					headers: PROXY_CONFIG.REQUEST_HEADERS,
-				})
-
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`)
-				}
-
-				const text = await response.text()
-				console.info(
-					`HttpService: Successfully fetched data through ${proxyUrl}`
-				)
-				return text
-			} catch (error) {
-				console.warn(`HttpService: Proxy ${proxyUrl} failed:`, error)
-				lastError = error as Error
-				continue
-			}
+		return {
+			text: await response.text(),
+			lastModified: response.headers.get('last-modified') ?? undefined,
 		}
-
-		// Final fallback: Use Playwright (headless browser)
-		try {
-			console.info('HttpService: Falling back to Playwright')
-			const text = await PlaywrightService.fetchHtml(encodedUrl)
-			console.info('HttpService: Successfully fetched data with Playwright')
-			return text
-		} catch (error) {
-			console.error('HttpService: Playwright failed:', error)
-			lastError = error as Error
-		}
-
-		throw lastError || new Error('All fetch attempts failed')
-	}
-
-	/**
-	 * Gets cookies from environment variable or by making an initial request
-	 * Caches cookies for 30 minutes
-	 */
-	private static async getCookies(): Promise<string | null> {
-		// First, check for manually configured cookies in environment
-		const envCookies = process.env.WIKI_COOKIES
-		if (envCookies) {
-			console.info('HttpService: Using cookies from environment')
-			return envCookies
-		}
-
-		// Check if cached cookies are still valid
-		if (this.cookieCache && Date.now() < this.cookieExpiry) {
-			console.info('HttpService: Using cached cookies')
-			return this.cookieCache
-		}
-
-		try {
-			console.info('HttpService: Fetching fresh cookies')
-
-			// Make initial request to get cookies
-			const initialUrl = 'https://wiki.leagueoflegends.com/en-us/Ultra_Rapid_Fire'
-			const response = await fetch(initialUrl, {
-				headers: {
-					'user-agent': PROXY_CONFIG.REQUEST_HEADERS['user-agent'],
-					accept: PROXY_CONFIG.REQUEST_HEADERS.accept,
-				},
-			})
-
-			// Extract cookies from Set-Cookie headers
-			const setCookieHeaders = response.headers.get('set-cookie')
-			if (setCookieHeaders) {
-				// Parse cookies from Set-Cookie headers
-				const cookies = this.parseCookies(setCookieHeaders)
-
-				if (cookies) {
-					// Cache for 30 minutes
-					this.cookieCache = cookies
-					this.cookieExpiry = Date.now() + 30 * 60 * 1000
-					console.info('HttpService: Cached fresh cookies')
-					return cookies
-				}
-			}
-
-			console.warn('HttpService: No cookies received from initial request')
-			return null
-		} catch (error) {
-			console.error('HttpService: Failed to fetch cookies:', error)
-			return null
-		}
-	}
-
-	/**
-	 * Parse Set-Cookie headers into a cookie string
-	 */
-	private static parseCookies(setCookieHeader: string): string | null {
-		try {
-			// Split multiple Set-Cookie headers if present
-			const cookies = setCookieHeader
-				.split(',')
-				.map(cookie => {
-					// Extract just the name=value part before the first semicolon
-					const match = cookie.match(/([^=]+)=([^;]+)/)
-					return match ? `${match[1].trim()}=${match[2].trim()}` : null
-				})
-				.filter(Boolean)
-				.join('; ')
-
-			return cookies || null
-		} catch (error) {
-			console.error('HttpService: Error parsing cookies:', error)
-			return null
-		}
-	}
-
-	/**
-	 * Clear cached cookies (useful for testing)
-	 */
-	static clearCookieCache(): void {
-		this.cookieCache = null
-		this.cookieExpiry = 0
-		console.info('HttpService: Cookie cache cleared')
 	}
 }

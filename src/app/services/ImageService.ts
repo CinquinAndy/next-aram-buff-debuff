@@ -2,7 +2,6 @@
 
 import fs from 'fs'
 import path from 'path'
-import { HttpService } from './http'
 
 /**
  * Service responsible for managing champion images
