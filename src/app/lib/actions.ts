@@ -68,7 +68,7 @@ export async function getPatchInfos(): Promise<{
 
 	try {
 		const wikiService = WikiDataService.getInstance()
-		const { patchVersion, timestamp } = await wikiService.getDataFromCache()
+		const { patchVersion, timestamp, sourceUpdatedAt } = await wikiService.getDataFromCache()
 
 		if (!patchVersion || !timestamp) {
 			console.error('Action: Patch information is missing in PocketBase')
@@ -77,8 +77,8 @@ export async function getPatchInfos(): Promise<{
 			)
 		}
 
-		// TODO : trouver le vraie patchdate dans le scrap, ca c'est pas la vraie date <3
-		const patchDate = new Date(timestamp)
+		// When the wiki data last changed (Last-Modified of the page); fetch time for older records
+		const patchDate = new Date(sourceUpdatedAt ?? timestamp)
 
 		console.info('Action: Patch information retrieved from cache', {
 			patchVersion,

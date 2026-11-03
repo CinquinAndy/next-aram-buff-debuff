@@ -1,0 +1,69 @@
+name: Données du wiki
+
+# Une fois par jour :
+# 1. copie validée du module ChampionData du wiki sur la branche `donnees-wiki`
+#    (source de repli de l'app si le wiki refuse le serveur de production) ;
+# 2. tests en réseau réel : données du wiki valides et à jour, site de production au patch courant.
+#    Un échec envoie la notification GitHub habituelle.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  copie:
+    name: Copie du module sur la branche donnees-wiki
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm snapshot:wiki "$RUNNER_TEMP/donnees-wiki"
+      - name: Publier si le module a changé
+        run: |
+          set -euo pipefail
+          if git fetch --depth 1 origin donnees-wiki; then
+            git worktree add publication FETCH_HEAD
+            git -C publication checkout -B donnees-wiki
+          else
+            git worktree add --orphan -b donnees-wiki publication
+          fi
+          cp "$RUNNER_TEMP"/donnees-wiki/* publication/
+          cd publication
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Module inchangé, rien à publier"
+            exit 0
+          fi
+          revision=$(node -p "require('./meta.json').dataRevision")
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "données : module ChampionData du wiki ($revision)"
+          git push origin donnees-wiki
+
+  tests-reseau:
+    name: Tests en réseau réel
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:live
+        env:
+          PROD_URL: https://aram-balances-checker.forhives.fr

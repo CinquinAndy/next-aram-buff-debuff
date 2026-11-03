@@ -14,6 +14,9 @@ interface PocketBaseRecord {
 		data: ChampionData
 		patchVersion?: string
 		timestamp: number
+		dataRevision?: string
+		source?: string
+		sourceUpdatedAt?: string
 	}
 	created: string
 	updated: string
@@ -30,8 +33,16 @@ interface PocketBaseListResponse {
 export interface WikiFetchResult {
 	data: ChampionData
 	fromCache: boolean
+	/** When the data was fetched */
 	timestamp: number
+	/** Current game patch when the data was fetched (Data Dragon), e.g. "V26.21" */
 	patchVersion?: string
+	/** Most recent patch in the champions' "changes" fields: the revision of the wiki data */
+	dataRevision?: string
+	/** Name of the source the data came from ("wiki" or "github-snapshot") */
+	source?: string
+	/** Last-Modified of the source page, i.e. when the wiki data last changed */
+	sourceUpdatedAt?: string
 }
 
 export class PocketBaseService {
@@ -127,6 +138,9 @@ export class PocketBaseService {
 				fromCache: true,
 				timestamp: record.content.timestamp,
 				patchVersion: record.content.patchVersion,
+				dataRevision: record.content.dataRevision,
+				source: record.content.source,
+				sourceUpdatedAt: record.content.sourceUpdatedAt,
 			}
 		} catch (error) {
 			console.error('PocketBaseService: Error fetching data:', error)
@@ -148,6 +162,9 @@ export class PocketBaseService {
 				data: result.data,
 				patchVersion: result.patchVersion,
 				timestamp: result.timestamp,
+				dataRevision: result.dataRevision,
+				source: result.source,
+				sourceUpdatedAt: result.sourceUpdatedAt,
 			}
 
 			// Try to update first

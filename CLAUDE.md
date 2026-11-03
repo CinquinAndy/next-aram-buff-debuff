@@ -50,13 +50,18 @@ This project uses **Biome** (not ESLint/Prettier). Configuration in `biome.json`
    - Both use `WikiDataService` singleton
 
 2. **WikiDataService** (`src/app/services/WikiDataService.ts`):
-   - Singleton service that scrapes League Wiki Lua data
-   - Uses PocketBase for data persistence (replaces file-based cache)
-   - Default cache TTL: 24 hours (`PROXY_CONFIG.CACHE.DEFAULT_MAX_AGE`)
-   - Reads the raw Lua module (`Module:ChampionData/data?action=raw`; `?action=edit` is blocked by Cloudflare)
+   - Singleton service that refreshes the champion data and caches it in PocketBase
+   - Default cache TTL: 24 hours (`SOURCES_CONFIG.CACHE.DEFAULT_MAX_AGE`)
+   - Sources, in order (`src/app/config/sources.ts`): the plain wiki page `Module:ChampionData/data`
+     (allowed by robots.txt; `?action=raw` and api.php are not), then the copy published on the
+     `donnees-wiki` branch by `.github/workflows/donnees-wiki.yml`
+   - Every source goes through `parseChampionData` (`src/app/lib/wikiParser.ts`) and `validateChampionData`
+     (`src/app/lib/dataValidation.ts`); data that is empty, partial, or older than the stored data is never saved.
+     When no source passes, the stored data is kept and returned with `fromCache: true`
    - Stale-while-revalidate: when the PocketBase data is older than the TTL, a page view starts a background
      refresh (`after()`), one at a time, retried at most once an hour after a failure
-   - Patch version = the highest `["changes"]` value across champions (`src/app/lib/patchVersion.ts`)
+   - Patch shown = current game patch from Data Dragon `versions.json[0]` (16.21.1 → V26.21);
+     data revision = the highest `["changes"]` value across champions (`src/app/lib/patchVersion.ts`)
    - Triggers `ImageService` to download champion splash arts
 
 3. **PocketBaseService** (`src/app/services/PocketBaseService.ts`):
@@ -73,20 +78,24 @@ This project uses **Biome** (not ESLint/Prettier). Configuration in `biome.json`
    - Special name mappings: GnarBig → Gnar, MonkeyKing ↔ Wukong
 
 5. **HttpService** (`src/app/services/http.ts`):
-   - Handles HTTP requests with custom headers for wiki scraping
-   - Configuration in `src/app/config/proxy.ts`
-   - Falls back to Playwright if direct requests fail
-
-6. **PlaywrightService** (`src/app/services/PlaywrightService.ts`):
-   - Headless browser service to bypass Cloudflare protection
-   - Uses Chromium to simulate real browser behavior
-   - Automatically used as fallback when fetch fails
+   - One plain GET with a descriptive User-Agent (`USER_AGENT` in `src/app/config/sources.ts`)
+   - No browser imitation, cookies or headless browser: on a refusal it logs status, server,
+     cf-mitigated, cf-ray and the start of the body, then the next source is tried
 
 ### API Routes
 
-- **POST /api/refresh-data**: Manually trigger data refresh from wiki
+- **POST /api/refresh**: Manually trigger data refresh from the sources
   - Optional authorization via `REFRESH_SECRET` env variable
-  - Forces fresh scrape and updates PocketBase
+  - Answers 502 (`success: false`) when every source failed and the stored data was kept
+- **GET /api/refresh/info**: Age, patch, data revision and source of the stored data
+
+### Tests
+
+- `pnpm test`: unit tests of the parser and validation on saved copies of the module (`tests/fixtures`),
+  and an integration test of the whole refresh chain with the network mocked
+- `pnpm test:live`: real network (wiki, Data Dragon, and the production site when `PROD_URL` is set);
+  fails when the data is empty or more than 2 patches behind. Run daily by `donnees-wiki.yml`
+- CI (`.github/workflows/ci.yml`): frozen install, `pnpm typecheck`, `pnpm test`, `pnpm build`
 
 ### Key Components
 
@@ -98,7 +107,8 @@ This project uses **Biome** (not ESLint/Prettier). Configuration in `biome.json`
 
 Core types in `src/app/lib/types.ts`:
 
-- **AramStats**: Seven stat modifiers (dmg_dealt, dmg_taken, healing, shielding, ability_haste, attack_speed, energy_regen)
+- **AramStats**: Stat modifiers (dmg_dealt, dmg_taken, healing, shielding, ability_haste, attack_speed, energy_regen, tenacity).
+  The wiki's `total_as` and `energyregen_mod` keys map to attack_speed and energy_regen. 1 means "unmodified" for every stat
 - **Champion**: Contains id, name, aram stats, and optional splashArt path
 - **STAT_WEIGHTS**: Used for power level calculations (dmg_dealt/dmg_taken: 1.2, healing/shielding: 1.0, ability_haste/attack_speed: 0.8, energy_regen: 0.6)
 
@@ -122,13 +132,14 @@ Core types in `src/app/lib/types.ts`:
 ### Name Normalization
 
 Champion name handling has special cases:
+- Alternate forms with a fractional wiki id (GnarBig 150.2, Kled & Skaarl 240.1) are skipped by the parser
 - GnarBig → Gnar (wiki uses GnarBig, API uses Gnar)
 - MonkeyKing ↔ Wukong (wiki uses MonkeyKing, display uses Wukong)
 - Special characters are stripped when saving images
 
 ### Caching Strategy
 
-- Wiki data stored in PocketBase (`https://lol.andy-cinquin.fr`) with 12-hour default TTL
+- Wiki data stored in PocketBase (`https://lol.andy-cinquin.fr`) with 24-hour default TTL
 - Champion images cached locally in `public/images/champions/`
 - Stale PocketBase data is returned if fresh fetch fails (graceful degradation)
 - Environment variables:

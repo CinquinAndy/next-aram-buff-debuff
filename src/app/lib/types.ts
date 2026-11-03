@@ -24,6 +24,8 @@ export interface AramStats {
 	ability_haste: number
 	attack_speed: number
 	energy_regen: number
+	/** Optional: data saved before tenacity was read does not have it */
+	tenacity?: number
 }
 
 /**
@@ -171,6 +173,7 @@ export const STAT_WEIGHTS = {
 	ability_haste: 0.8, // Lower impact
 	attack_speed: 0.8, // Lower impact
 	energy_regen: 0.6, // Minimal impact
+	tenacity: 0.6, // Minimal impact
 } as const
 
 /**

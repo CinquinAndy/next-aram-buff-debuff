@@ -18,6 +18,7 @@ export const DEFAULT_GAME_MODE_STATS: AramStats = {
 	ability_haste: 1,
 	attack_speed: 1,
 	energy_regen: 1,
+	tenacity: 1,
 }
 
 /**
@@ -47,6 +48,7 @@ export const getGameModeStats = (
 		ability_haste: modeStats.ability_haste ?? 1,
 		attack_speed: modeStats.attack_speed ?? 1,
 		energy_regen: modeStats.energy_regen ?? 1,
+		tenacity: modeStats.tenacity ?? 1,
 	}
 }
 
@@ -58,7 +60,7 @@ export const hasGameModeModifications = (
 	mode: GameMode
 ): boolean => {
 	const stats = getGameModeStats(champion, mode)
-	return Object.values(stats).some(value => value !== 1)
+	return Object.values(stats).some(value => value !== undefined && value !== 1)
 }
 
 /**

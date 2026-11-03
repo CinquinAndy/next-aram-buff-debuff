@@ -2,6 +2,7 @@
 
 import { AramStats, Champion } from '@/app/lib/types'
 import {
+	Anchor,
 	ArrowUpNarrowWide,
 	Droplet,
 	Heart,
@@ -38,7 +39,7 @@ export const ChampionCard: React.FC<ChampionCardProps> = ({
 	// Use provided stats or fallback to aram stats
 	const stats = gameModeStats ?? champion.aram
 	const score = calculateModificationScoreFromStats(stats)
-	const hasModifications = Object.values(stats).some(v => v !== 1)
+	const hasModifications = Object.values(stats).some(v => v !== undefined && v !== 1)
 	const analysis = analyzeChampionStats(stats)
 
 	return (
@@ -85,7 +86,7 @@ export const ChampionCard: React.FC<ChampionCardProps> = ({
 			{/* Stats section */}
 			<div className="space-y-3 p-4">
 				{Object.entries(stats).map(([key, value]) => {
-					if (value === 1) return null
+					if (value === undefined || value === 1) return null
 
 					const statConfig = {
 						dmg_dealt: { icon: Sword, label: 'Damage Dealt' },
@@ -95,6 +96,7 @@ export const ChampionCard: React.FC<ChampionCardProps> = ({
 						ability_haste: { icon: Zap, label: 'Ability Haste' },
 						attack_speed: { icon: ArrowUpNarrowWide, label: 'Attack Speed' },
 						energy_regen: { icon: Droplet, label: 'Energy Regen' },
+						tenacity: { icon: Anchor, label: 'Tenacity' },
 					}[key]
 
 					if (!statConfig) return null

@@ -14,6 +14,7 @@ import {
 	type GameMode,
 } from '@/app/components/GameModeSelector'
 import Link from 'next/link'
+import { SOURCES_CONFIG } from '@/app/config/sources'
 import { ModificationScore } from '@/app/lib/types'
 
 interface ChampionWithScore extends Champion {
@@ -92,6 +93,9 @@ export default function AramGrid({
 		})
 	}, [baseChampionsList, searchTerm, sortBy, sortDirection, selectedMode])
 
+	const updated = new Date(patchInfos.patchDate)
+	const dataDate = Number.isNaN(updated.getTime()) ? null : updated.toISOString().slice(0, 10)
+
 	return (
 		<div className="h-full min-h-screen bg-gradient-to-br from-[#0a1528] from-20% to-[#73551a]">
 			<Header
@@ -133,6 +137,23 @@ export default function AramGrid({
 			>
 				Last patch : {patchInfos.patchVersion}
 			</Link>
+
+			<footer className="mx-auto max-w-7xl px-4 pb-8 text-center text-xs text-white/60">
+				Data:{' '}
+				<a href={SOURCES_CONFIG.WIKI_MODULE_PAGE} className="underline" target="_blank" rel="noopener noreferrer">
+					League of Legends Wiki
+				</a>{' '}
+				(
+				<a
+					href="https://creativecommons.org/licenses/by-sa/3.0/"
+					className="underline"
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					CC BY-SA 3.0
+				</a>
+				){dataDate && `, updated ${dataDate}`}
+			</footer>
 		</div>
 	)
 }

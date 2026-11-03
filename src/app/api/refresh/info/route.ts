@@ -43,6 +43,9 @@ export async function GET() {
 		return NextResponse.json({
 			age, // in milliseconds
 			patchVersion: data.patchVersion,
+			dataRevision: data.dataRevision,
+			source: data.source,
+			sourceUpdatedAt: data.sourceUpdatedAt,
 			lastUpdate: new Date(data.timestamp),
 			championsCount: championIds.length,
 			sample: sampleChampion,
