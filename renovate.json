@@ -8,6 +8,18 @@
 			"automerge": true,
 			"automergeType": "pr",
 			"automergeStrategy": "squash"
+		},
+		{
+			"description": "La CI reproduit la prod Railpack : Node 22 (RAILPACK_NODE_VERSION dans Coolify). Monter Node et @types/node seulement en même temps que la prod.",
+			"matchPackageNames": ["node", "@types/node"],
+			"matchUpdateTypes": ["major"],
+			"enabled": false
+		},
+		{
+			"description": "La CI reproduit la prod Railpack, qui prend pnpm 9 d'après le lockfile v9. pnpm 10 et plus bloquent les scripts d'installation (esbuild) et divergeraient de la prod.",
+			"matchPackageNames": ["pnpm"],
+			"matchUpdateTypes": ["major"],
+			"enabled": false
 		}
 	]
 }
