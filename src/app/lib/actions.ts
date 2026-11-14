@@ -1,97 +1,59 @@
 /**
- * Server actions for fetching and managing ARAM data
+ * Server-side data loading for the page
  * @module lib/actions
  */
 
-import { ChampionData } from '@/app/lib/types'
+import { applyMayhem } from '@/app/lib/mayhem'
+import type { ChampionData } from '@/app/lib/types'
 import { WikiDataService } from '@/app/services/WikiDataService'
 
-/**
- * Fetches ARAM champion data from PocketBase cache ONLY
- * Does NOT trigger wiki scraping - use /api/refresh for that
- * Returns structured champion data with ARAM modifications
- */
-export async function fetchAramData(): Promise<ChampionData> {
-	console.info('Action: Fetching ARAM data from PocketBase cache')
-
-	try {
-		const wikiService = WikiDataService.getInstance()
-		const { data, patchVersion, timestamp } =
-			await wikiService.getDataFromCache()
-
-		const championsCount = Object.keys(data).length
-
-		// Log detailed information about the data retrieval
-		console.info('Action: ARAM data retrieved from cache', {
-			patchVersion,
-			championsCount,
-			dataAge: Date.now() - timestamp,
-		})
-
-		if (championsCount === 0) {
-			console.error('Action: No champion data found in PocketBase')
-			throw new Error(
-				'No champion data found in PocketBase. Please call /api/refresh to populate the cache.'
-			)
-		}
-
-		return data
-	} catch (error) {
-		console.error('Action: Failed to fetch ARAM data:', error)
-
-		// Provide helpful error message if PocketBase is empty
-		if (
-			error instanceof Error &&
-			error.message.includes('No data available')
-		) {
-			throw new Error(
-				'PocketBase cache is empty. Please call POST /api/refresh to populate data from the wiki.'
-			)
-		}
-
-		throw new Error(
-			`Failed to fetch ARAM data: ${error instanceof Error ? error.message : 'Unknown error'}`
-		)
+export interface PageData {
+	champions: ChampionData
+	patchInfos: {
+		patchVersion: string
+		/** When the wiki data last changed (Last-Modified of the page); fetch time for older records */
+		patchDate: Date
+	}
+	mayhem: {
+		/** False until a refresh has read the Mayhem page: the Mayhem tab then shows ARAM values */
+		available: boolean
+		/** "Global stat changes" of the Mayhem page (bonus health, armor, attack speed cap…) */
+		globalChanges: string[]
+		/** When the Mayhem page last changed, when known */
+		updatedAt?: string
 	}
 }
 
 /**
- * Retrieves information about the latest patch version and its timestamp
- * Reads from PocketBase cache only
- * @returns Object containing the patch version and its date
+ * Reads the stored data once (PocketBase only, no scraping: /api/refresh does that)
+ * and adds each champion's ARAM: Mayhem values.
  */
-export async function getPatchInfos(): Promise<{
-	patchVersion: string
-	patchDate: Date
-}> {
-	console.info('Action: Fetching patch information from cache')
+export async function fetchPageData(): Promise<PageData> {
+	const wikiService = WikiDataService.getInstance()
+	const { data, patchVersion, timestamp, sourceUpdatedAt, mayhem } = await wikiService.getDataFromCache()
 
-	try {
-		const wikiService = WikiDataService.getInstance()
-		const { patchVersion, timestamp, sourceUpdatedAt } = await wikiService.getDataFromCache()
+	const championsCount = Object.keys(data).length
+	console.info('Action: Data read from cache', {
+		patchVersion,
+		championsCount,
+		mayhemChampions: mayhem?.champions.length ?? 0,
+		dataAge: Date.now() - timestamp,
+	})
 
-		if (!patchVersion || !timestamp) {
-			console.error('Action: Patch information is missing in PocketBase')
-			throw new Error(
-				'Patch information not found in PocketBase. Call /api/refresh to populate.'
-			)
-		}
+	if (championsCount === 0) {
+		throw new Error('No champion data found in PocketBase. Please call /api/refresh to populate the cache.')
+	}
 
-		// When the wiki data last changed (Last-Modified of the page); fetch time for older records
-		const patchDate = new Date(sourceUpdatedAt ?? timestamp)
-
-		console.info('Action: Patch information retrieved from cache', {
-			patchVersion,
-			patchDate,
-		})
-
-		return { patchVersion, patchDate }
-	} catch (error) {
-		console.error('Action: Failed to fetch patch information:', error)
-		throw new Error(
-			`Failed to fetch patch information: ${
-				error instanceof Error ? error.message : 'Unknown error'
-			}`
-		)
+	return {
+		champions: applyMayhem(data, mayhem),
+		patchInfos: {
+			patchVersion: patchVersion ?? 'unknown',
+			patchDate: new Date(sourceUpdatedAt ?? timestamp),
+		},
+		mayhem: {
+			available: Boolean(mayhem),
+			globalChanges: mayhem?.globalChanges ?? [],
+			updatedAt: mayhem?.sourceUpdatedAt,
+		},
 	}
 }

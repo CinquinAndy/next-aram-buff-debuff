@@ -7,7 +7,9 @@
 import { type DataSource, SOURCES_CONFIG } from '@/app/config/sources'
 import { validateChampionData } from '@/app/lib/dataValidation'
 import { dataRevision, patchFromDdragonVersion } from '@/app/lib/patchVersion'
-import type { ChampionData } from '@/app/lib/types'
+import { findWikiConflicts, validateMayhemData } from '@/app/lib/mayhem'
+import { parseMayhemPage } from '@/app/lib/mayhemParser'
+import type { ChampionData, MayhemData } from '@/app/lib/types'
 import { parseChampionData } from '@/app/lib/wikiParser'
 import { after } from 'next/server'
 import { HttpService } from './http'
@@ -102,7 +104,8 @@ export class WikiDataService {
 			championsCount: Object.keys(pbData.data).length,
 		})
 
-		if (this.isCacheStale(pbData.timestamp, SOURCES_CONFIG.CACHE.DEFAULT_MAX_AGE)) {
+		// Data saved before Mayhem was read has no Mayhem overrides: refresh now rather than in up to 24 h
+		if (this.isCacheStale(pbData.timestamp, SOURCES_CONFIG.CACHE.DEFAULT_MAX_AGE) || !pbData.mayhem) {
 			this.scheduleBackgroundRefresh()
 		}
 
@@ -127,6 +130,10 @@ export class WikiDataService {
 					// getData fell back to the stale PocketBase data: the scrape failed
 					this.lastFailedRefreshAt = Date.now()
 					console.warn('WikiDataService: Background refresh failed, keeping stale data')
+				} else if (!result.mayhem) {
+					// Saved without Mayhem data: wait before retrying, every view would refresh otherwise
+					this.lastFailedRefreshAt = Date.now()
+					console.warn('WikiDataService: Background refresh saved no Mayhem data')
 				} else {
 					console.info('WikiDataService: Background refresh done', {
 						patchVersion: result.patchVersion,
@@ -175,6 +182,7 @@ export class WikiDataService {
 		for (const source of SOURCES_CONFIG.DATA_SOURCES) {
 			try {
 				const result = await this.fetchFromSource(source, stored?.data)
+				result.mayhem = (await this.fetchMayhem(result.data)) ?? stored?.mayhem
 				const saved = await this.pocketbaseService.saveData(result)
 				if (!saved) {
 					// Not persisted: wait before trying again instead of refetching on every view
@@ -228,6 +236,41 @@ export class WikiDataService {
 			source: source.name,
 			sourceUpdatedAt: lastModified ? new Date(lastModified).toISOString() : undefined,
 		}
+	}
+
+	/**
+	 * ARAM: Mayhem overrides from the first Mayhem source whose page parses and passes validation.
+	 * Undefined when none does: the caller keeps the stored Mayhem data, the ARAM data is saved anyway.
+	 */
+	private async fetchMayhem(data: ChampionData): Promise<MayhemData | undefined> {
+		for (const source of SOURCES_CONFIG.MAYHEM_SOURCES) {
+			try {
+				const { text, lastModified } = await HttpService.fetchText(source.url)
+				const mayhem = parseMayhemPage(text)
+				const validation = validateMayhemData(mayhem, data)
+				if (!validation.ok) throw new Error(`invalid Mayhem data: ${validation.errors.join('; ')}`)
+				if (validation.unmatched.length > 0) {
+					console.warn('WikiDataService: Mayhem rows without a champion', validation.unmatched)
+				}
+
+				const conflicts = findWikiConflicts(data, mayhem)
+				if (conflicts.length > 0) {
+					console.warn('WikiDataService: The module and the Mayhem page disagree on ARAM values', conflicts)
+				}
+
+				return {
+					...mayhem,
+					source: source.name,
+					sourceUpdatedAt: lastModified ? new Date(lastModified).toISOString() : undefined,
+					timestamp: Date.now(),
+				}
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error)
+				console.warn(`WikiDataService: Mayhem source ${source.name} rejected`, message)
+			}
+		}
+		console.error('WikiDataService: No Mayhem source gave valid data, keeping the stored Mayhem data')
+		return undefined
 	}
 
 	/**

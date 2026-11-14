@@ -3,7 +3,7 @@
 import { motion } from 'motion/react'
 import { Gamepad2 } from 'lucide-react'
 
-export type GameMode = 'aram' | 'urf' | 'usb' | 'ofa' | 'nb' | 'ar'
+export type GameMode = 'mayhem' | 'aram' | 'urf' | 'usb' | 'ofa' | 'nb' | 'ar'
 
 export interface GameModeInfo {
 	id: GameMode
@@ -14,6 +14,13 @@ export interface GameModeInfo {
 }
 
 export const GAME_MODES: GameModeInfo[] = [
+	{
+		id: 'mayhem',
+		name: 'Mayhem',
+		fullName: 'ARAM: Mayhem (ARAM values with the Mayhem overrides)',
+		color: '#e11d48',
+		icon: '🔥',
+	},
 	{
 		id: 'aram',
 		name: 'ARAM',

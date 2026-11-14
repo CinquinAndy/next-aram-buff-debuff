@@ -11,6 +11,7 @@ export const StatDisplay = ({
 	label,
 	value,
 	statKey,
+	badge,
 }: StatDisplayProps) => {
 	const isPositive = isStatPositive(statKey, value)
 	const displayValue = formatStatValue(statKey, value)
@@ -39,7 +40,14 @@ export const StatDisplay = ({
 				<div className="flex-1 space-y-2">
 					{/* Stat label and value */}
 					<div className="flex items-center justify-between">
-						<span className="font-medium text-slate-700">{label}</span>
+						<span className="flex items-center gap-2 font-medium text-slate-700">
+							{label}
+							{badge && (
+								<span className="rounded bg-rose-600/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-rose-700">
+									{badge}
+								</span>
+							)}
+						</span>
 						<span
 							className={cn(
 								'flex items-center gap-1 font-semibold',

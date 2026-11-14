@@ -48,6 +48,14 @@ export async function GET() {
 			sourceUpdatedAt: data.sourceUpdatedAt,
 			lastUpdate: new Date(data.timestamp),
 			championsCount: championIds.length,
+			mayhem: data.mayhem
+				? {
+						source: data.mayhem.source,
+						sourceUpdatedAt: data.mayhem.sourceUpdatedAt,
+						lastUpdate: data.mayhem.timestamp ? new Date(data.mayhem.timestamp) : undefined,
+						championsCount: data.mayhem.champions.length,
+					}
+				: null,
 			sample: sampleChampion,
 		})
 	} catch (error) {

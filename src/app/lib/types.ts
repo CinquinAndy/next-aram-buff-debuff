@@ -136,10 +136,57 @@ export interface FullChampionData {
 export interface Champion {
 	id: string
 	name: string
+	/** Name as the wiki writes it ("Cho'Gath", "Renata Glasc"); missing in data saved before it was read */
+	displayName?: string
 	aram: AramStats
 	splashArt?: string
 	// Extended data (optional for backward compatibility)
 	fullData?: FullChampionData
+	/** ARAM: Mayhem values, added when the page is served (see lib/mayhem.ts) */
+	mayhem?: ChampionMayhem
+}
+
+/** Changes the wiki lists for one ability, as plain text bullets */
+export interface AbilityChange {
+	ability: string
+	changes: string[]
+}
+
+/** One stat line of the Mayhem table: "Damage dealt changed to 0% from +5%" */
+export interface MayhemStatChange {
+	stat: keyof AramStats
+	/** Value in Mayhem, in the app's units (multiplier, or flat for ability haste) */
+	value: number
+	/** ARAM value the wiki says Mayhem starts from, same units */
+	from?: number
+}
+
+/** Mayhem overrides of one champion, as listed on the wiki's ARAM: Mayhem page */
+export interface MayhemChampionOverride {
+	/** Champion name as written on the page ("Cho'Gath") */
+	name: string
+	stats: MayhemStatChange[]
+	abilities: AbilityChange[]
+}
+
+/** What the ARAM: Mayhem page gives: per-champion overrides and the changes for everyone */
+export interface MayhemData {
+	champions: MayhemChampionOverride[]
+	/** "Global stat changes" bullets (bonus health, armor, attack speed cap…) */
+	globalChanges: string[]
+	source?: string
+	/** Last-Modified of the page */
+	sourceUpdatedAt?: string
+	/** When it was fetched */
+	timestamp?: number
+}
+
+/** Final Mayhem values of a champion: its ARAM values with the Mayhem overrides on top */
+export interface ChampionMayhem {
+	stats: AramStats
+	/** Stats Mayhem sets for this champion (the others are its ARAM values) */
+	overridden: (keyof AramStats)[]
+	abilities: AbilityChange[]
 }
 
 /**
@@ -223,4 +270,6 @@ export interface StatDisplayProps {
 	label: string
 	value: number
 	statKey: string
+	/** Small label next to the stat name, e.g. "Mayhem" when Mayhem sets this value */
+	badge?: string
 }

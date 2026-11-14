@@ -1,8 +1,8 @@
 name: Données du wiki
 
 # Une fois par jour :
-# 1. copie validée du module ChampionData du wiki sur la branche `donnees-wiki`
-#    (source de repli de l'app si le wiki refuse le serveur de production) ;
+# 1. copie validée du module ChampionData et de la page ARAM: Mayhem du wiki sur la branche
+#    `donnees-wiki` (sources de repli de l'app si le wiki refuse le serveur de production) ;
 # 2. tests en réseau réel : données du wiki valides et à jour, site de production au patch courant.
 #    Un échec envoie la notification GitHub habituelle.
 on:

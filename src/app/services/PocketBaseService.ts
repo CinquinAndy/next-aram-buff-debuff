@@ -4,7 +4,7 @@
  */
 
 import { POCKETBASE_CONFIG } from '@/app/config/pocketbase'
-import { ChampionData } from '@/app/lib/types'
+import type { ChampionData, MayhemData } from '@/app/lib/types'
 
 interface PocketBaseRecord {
 	id: string
@@ -17,6 +17,7 @@ interface PocketBaseRecord {
 		dataRevision?: string
 		source?: string
 		sourceUpdatedAt?: string
+		mayhem?: MayhemData
 	}
 	created: string
 	updated: string
@@ -43,6 +44,8 @@ export interface WikiFetchResult {
 	source?: string
 	/** Last-Modified of the source page, i.e. when the wiki data last changed */
 	sourceUpdatedAt?: string
+	/** ARAM: Mayhem overrides; kept from the previous refresh when the Mayhem page fails */
+	mayhem?: MayhemData
 }
 
 export class PocketBaseService {
@@ -141,6 +144,7 @@ export class PocketBaseService {
 				dataRevision: record.content.dataRevision,
 				source: record.content.source,
 				sourceUpdatedAt: record.content.sourceUpdatedAt,
+				mayhem: record.content.mayhem,
 			}
 		} catch (error) {
 			console.error('PocketBaseService: Error fetching data:', error)
@@ -165,6 +169,7 @@ export class PocketBaseService {
 				dataRevision: result.dataRevision,
 				source: result.source,
 				sourceUpdatedAt: result.sourceUpdatedAt,
+				mayhem: result.mayhem,
 			}
 
 			// Try to update first

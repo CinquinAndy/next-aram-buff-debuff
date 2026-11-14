@@ -1,6 +1,6 @@
 'use client'
 
-import { AramStats, Champion } from '@/app/lib/types'
+import type { AramStats, Champion } from '@/app/lib/types'
 import {
 	Anchor,
 	ArrowUpNarrowWide,
@@ -14,11 +14,23 @@ import {
 import {
 	calculateModificationScoreFromStats,
 	analyzeChampionStats,
+	formatStatValue,
 } from '@/app/utils/aramUtils'
 import { ChampionStatusBadges } from '@/app/components/ChampionStatusBadges'
 import { StatDisplay } from '@/app/components/StatDisplay'
 import type { GameMode } from '@/app/components/GameModeSelector'
 import Image from 'next/image'
+
+const STAT_LABELS: Record<keyof AramStats, string> = {
+	dmg_dealt: 'Damage Dealt',
+	dmg_taken: 'Damage Taken',
+	healing: 'Healing',
+	shielding: 'Shielding',
+	ability_haste: 'Ability Haste',
+	attack_speed: 'Attack Speed',
+	energy_regen: 'Energy Regen',
+	tenacity: 'Tenacity',
+}
 
 interface ChampionCardProps {
 	champion: Champion
@@ -41,6 +53,11 @@ export const ChampionCard: React.FC<ChampionCardProps> = ({
 	const score = calculateModificationScoreFromStats(stats)
 	const hasModifications = Object.values(stats).some(v => v !== undefined && v !== 1)
 	const analysis = analyzeChampionStats(stats)
+	const mayhem = gameMode === 'mayhem' ? champion.mayhem : undefined
+	// ARAM changes Mayhem sets back to neutral: invisible otherwise, the card only lists modified stats
+	const removedInMayhem = (mayhem?.overridden ?? []).filter(
+		key => stats[key] === 1 && champion.aram[key] !== undefined && champion.aram[key] !== 1
+	)
 
 	return (
 		<div className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-lg transition-shadow duration-300 hover:shadow-xl">
@@ -108,12 +125,39 @@ export const ChampionCard: React.FC<ChampionCardProps> = ({
 							label={statConfig.label}
 							value={value}
 							statKey={key}
+							badge={mayhem?.overridden.includes(key as keyof AramStats) ? 'Mayhem' : undefined}
 						/>
 					)
 				})}
 				{!hasModifications && (
 					<div className="rounded-lg border border-white/10 bg-white/5 p-3 py-4 text-center text-sm text-white/60">
 						✨ Perfectly balanced
+					</div>
+				)}
+				{removedInMayhem.length > 0 && (
+					<p className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-white/70">
+						Removed in Mayhem (ARAM value):{' '}
+						{removedInMayhem
+							.map(key => `${STAT_LABELS[key]} ${formatStatValue(key, champion.aram[key] ?? 1)}`)
+							.join(', ')}
+					</p>
+				)}
+				{mayhem && mayhem.abilities.length > 0 && (
+					<div className="rounded-xl border border-rose-400/20 bg-rose-500/5 p-3 text-sm text-white/80">
+						<p className="mb-2 text-xs font-semibold uppercase tracking-wide text-rose-200">Mayhem-only ability changes</p>
+						<p className="mb-2 text-xs text-white/50">ARAM ability changes also apply and are not listed yet.</p>
+						<ul className="space-y-2">
+							{mayhem.abilities.map(ability => (
+								<li key={ability.ability}>
+									<span className="font-semibold text-white">{ability.ability}</span>
+									<ul className="mt-1 list-disc space-y-0.5 pl-5 text-white/70">
+										{ability.changes.map(change => (
+											<li key={change}>{change}</li>
+										))}
+									</ul>
+								</li>
+							))}
+						</ul>
 					</div>
 				)}
 			</div>

@@ -63,6 +63,15 @@ This project uses **Biome** (not ESLint/Prettier). Configuration in `biome.json`
    - Patch shown = current game patch from Data Dragon `versions.json[0]` (16.21.1 → V26.21);
      data revision = the highest `["changes"]` value across champions (`src/app/lib/patchVersion.ts`)
    - Triggers `ImageService` to download champion splash arts
+   - ARAM: Mayhem: after the module, reads the wiki page `ARAM:_Mayhem` (then the `ARAM_Mayhem.html` extract
+     on the `donnees-wiki` branch) with `parseMayhemPage` (`src/app/lib/mayhemParser.ts`): per-champion
+     "Special modifiers" ("Damage dealt changed to 0% from +5%"), ability changes, and "Global stat changes".
+     Stored as `mayhem` next to `data`; when no Mayhem source passes `validateMayhemData`, the stored Mayhem
+     data is kept and the ARAM data is still saved
+   - Mayhem keeps every ARAM override and adds its own layer: `applyMayhem` (`src/app/lib/mayhem.ts`) gives each
+     champion `mayhem.stats` = ARAM stats with the overrides on top, when the page is served
+   - `findWikiConflicts` logs where the module and the Mayhem page's "from" values disagree on the ARAM value
+     (about 15 stats in November 2026): one of the two wiki pages is out of date there
 
 3. **PocketBaseService** (`src/app/services/PocketBaseService.ts`):
    - Singleton service for PocketBase interactions
@@ -99,7 +108,9 @@ This project uses **Biome** (not ESLint/Prettier). Configuration in `biome.json`
 
 ### Key Components
 
-- **AramStats** (`src/app/components/AramStats.tsx`): Main client component with search, sort, and champion grid
+- **AramStats** (`src/app/components/AramStats.tsx`): Main client component with search, sort, and champion grid.
+  Opens on the Mayhem tab (most played queue); Mayhem cards also show ability changes, ARAM changes Mayhem removes,
+  and a "Mayhem" badge on stats Mayhem sets
 - **ChampionCard** (`src/app/components/ChampionCard.tsx`): Individual champion display with splash art and stats
 - **Header** (`src/app/components/Header.tsx`): Top navigation with search and sort controls
 
@@ -126,7 +137,8 @@ Core types in `src/app/lib/types.ts`:
 ### Stat Interpretation
 
 - **dmg_taken**: Inverted logic - values < 1 mean taking less damage (buff), values > 1 mean taking more damage (nerf)
-- **ability_haste**: Uses absolute values, not percentages (e.g., value of 20 means +20 ability haste)
+- **ability_haste**: Uses absolute values, not percentages (e.g., value of 20 means +20 ability haste).
+  1 is still the "unmodified" value (legacy convention); the Mayhem parser stores "changed to 0" as 1
 - All other stats use percentage modifications (e.g., 1.1 = +10%, 0.9 = -10%)
 
 ### Name Normalization

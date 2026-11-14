@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { fetchAramData, getPatchInfos } from '@/app/lib/actions'
+import { fetchPageData } from '@/app/lib/actions'
 import AramGrid from '@/app/components/AramStats'
 
 // Force dynamic rendering to get fresh data
@@ -7,15 +7,9 @@ export const dynamic = 'force-dynamic'
 
 async function ChampionDataFetcher() {
 	try {
-		const aramData = await fetchAramData()
-		const patchInfos = await getPatchInfos()
+		const { champions, patchInfos, mayhem } = await fetchPageData()
 
-		console.info('Data fetched from cache', {
-			patchVersion: patchInfos.patchVersion,
-			championsCount: Object.keys(aramData).length,
-		})
-
-		if (!aramData || Object.keys(aramData).length === 0) {
+		if (Object.keys(champions).length === 0) {
 			return (
 				<div className="p-8 max-w-2xl mx-auto">
 					<div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
@@ -34,7 +28,7 @@ async function ChampionDataFetcher() {
 			)
 		}
 
-		return <AramGrid championsData={aramData} patchInfos={patchInfos} />
+		return <AramGrid championsData={champions} patchInfos={patchInfos} mayhem={mayhem} />
 	} catch (error) {
 		const isEmptyCache =
 			error instanceof Error &&
