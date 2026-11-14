@@ -16,6 +16,8 @@ import {
 import Link from 'next/link'
 import { SOURCES_CONFIG } from '@/app/config/sources'
 import { ModificationScore } from '@/app/lib/types'
+import type { PageData } from '@/app/lib/actions'
+import { MayhemGlobalChanges } from '@/app/components/MayhemGlobalChanges'
 
 interface ChampionWithScore extends Champion {
 	score: ModificationScore
@@ -25,17 +27,19 @@ interface ChampionWithScore extends Champion {
 export default function AramGrid({
 	championsData,
 	patchInfos,
+	mayhem,
 }: {
 	championsData: Record<string, Champion>
 	patchInfos: {
 		patchDate: Date
 		patchVersion: string
 	}
+	mayhem: PageData['mayhem']
 }) {
 	const [searchTerm, setSearchTerm] = useState('')
 	const [sortBy, setSortBy] = useState('name')
 	const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-	const [selectedMode, setSelectedMode] = useState<GameMode>('aram')
+	const [selectedMode, setSelectedMode] = useState<GameMode>('mayhem')
 
 	// Get available game modes based on champion data
 	const availableModes = useMemo(
@@ -116,6 +120,12 @@ export default function AramGrid({
 			</Header>
 
 			<main className="mx-auto max-w-7xl px-4 py-6">
+				{selectedMode === 'mayhem' && !mayhem.available && (
+					<p className="mb-6 rounded-xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+						Mayhem overrides are not loaded yet: the cards show the ARAM values for now.
+					</p>
+				)}
+				{selectedMode === 'mayhem' && <MayhemGlobalChanges changes={mayhem.globalChanges} />}
 				<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{sortedChampions.map((champion, index) => (
 						<ChampionCard
@@ -153,6 +163,15 @@ export default function AramGrid({
 					CC BY-SA 3.0
 				</a>
 				){dataDate && `, updated ${dataDate}`}
+				{selectedMode === 'mayhem' && (
+					<>
+						{' · Mayhem overrides: '}
+						<a href={SOURCES_CONFIG.MAYHEM_PAGE} className="underline" target="_blank" rel="noopener noreferrer">
+							ARAM: Mayhem
+						</a>
+						{mayhem.updatedAt && `, updated ${mayhem.updatedAt.slice(0, 10)}`}
+					</>
+				)}
 			</footer>
 		</div>
 	)

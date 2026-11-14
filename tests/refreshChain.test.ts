@@ -14,9 +14,12 @@ vi.mock('@/app/services/ImageService', () => ({
 const WIKI = 'https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data'
 const SNAPSHOT = 'https://raw.githubusercontent.com/CinquinAndy/next-aram-buff-debuff/donnees-wiki/ChampionData.lua'
 const DDRAGON = 'https://ddragon.leagueoflegends.com/api/versions.json'
+const MAYHEM = 'https://wiki.leagueoflegends.com/en-us/ARAM:_Mayhem'
+const MAYHEM_SNAPSHOT = 'https://raw.githubusercontent.com/CinquinAndy/next-aram-buff-debuff/donnees-wiki/ARAM_Mayhem.html'
 const PB_RECORD = 'https://lol.andy-cinquin.fr/api/collections/data/records/latestaramdata1'
 
 const page = fixture('module-page.html')
+const mayhemPage = fixture('mayhem-page.html')
 
 type Responder = (init?: RequestInit) => Response
 
@@ -39,6 +42,8 @@ function installNetwork(stored?: Partial<WikiFetchResult> & { data: ChampionData
 	const network: FakeNetwork = { routes: new Map(), saved: [], requests: [] }
 	network.routes.set(WIKI, () => text(page, 200, { 'last-modified': 'Thu, 22 Oct 2026 06:00:04 GMT' }))
 	network.routes.set(SNAPSHOT, () => text('404: Not Found', 404))
+	network.routes.set(MAYHEM, () => text(mayhemPage, 200, { 'last-modified': 'Sat, 14 Nov 2026 01:30:00 GMT' }))
+	network.routes.set(MAYHEM_SNAPSHOT, () => text('404: Not Found', 404))
 	network.routes.set(DDRAGON, () => text(JSON.stringify(['16.21.1', '16.20.1'])))
 	network.routes.set(PB_RECORD, init => {
 		if (init?.method === 'PATCH') {
@@ -154,6 +159,59 @@ describe('refresh chain', () => {
 		const service = await loadService()
 
 		await expect(service.getData({ forceRefresh: true })).rejects.toThrow(/No source gave valid data/)
+		expect(network.saved).toHaveLength(0)
+	})
+
+	it('saves the Mayhem overrides with the champion data', async () => {
+		const network = installNetwork(await storedV2523())
+		const service = await loadService()
+
+		const result = await service.getData({ forceRefresh: true })
+
+		expect(result.mayhem?.champions).toHaveLength(71)
+		expect(result.mayhem?.source).toBe('wiki')
+		expect(result.mayhem?.sourceUpdatedAt).toBe('2026-11-14T01:30:00.000Z')
+		expect(network.saved[0].mayhem?.champions).toHaveLength(71)
+	})
+
+	it('falls back to the Mayhem snapshot, then keeps the stored Mayhem data', async () => {
+		const stored = await storedV2523()
+		const storedMayhem = { champions: [], globalChanges: ['stored'], source: 'wiki' }
+		const network = installNetwork({ ...stored, mayhem: storedMayhem })
+		network.routes.set(MAYHEM, () => text('<title>Just a moment...</title>', 403))
+		network.routes.set(MAYHEM_SNAPSHOT, () => text(mayhemPage))
+		let service = await loadService()
+
+		const fromSnapshot = await service.getData({ forceRefresh: true })
+		expect(fromSnapshot.mayhem?.source).toBe('github-snapshot')
+
+		network.routes.set(MAYHEM_SNAPSHOT, () => text('', 500))
+		service = await loadService()
+		const kept = await service.getData({ forceRefresh: true })
+		expect(kept.fromCache).toBe(false)
+		expect(kept.mayhem).toEqual(storedMayhem)
+		expect(network.saved.at(-1)?.mayhem).toEqual(storedMayhem)
+	})
+
+	it('refreshes fresh data that has no Mayhem overrides yet', async () => {
+		const stored = await storedV2523()
+		const network = installNetwork({ ...stored, timestamp: Date.now() })
+		const service = await loadService()
+
+		const cached = await service.getDataFromCache()
+		expect(cached.mayhem).toBeUndefined()
+
+		await vi.waitFor(() => expect(network.saved).toHaveLength(1))
+		expect(network.saved[0].mayhem?.champions).toHaveLength(71)
+	})
+
+	it('does not refresh fresh data that has its Mayhem overrides', async () => {
+		const stored = await storedV2523()
+		const network = installNetwork({ ...stored, timestamp: Date.now(), mayhem: { champions: [], globalChanges: [] } })
+		const service = await loadService()
+
+		await service.getDataFromCache()
+		await new Promise(resolve => setTimeout(resolve, 50))
 		expect(network.saved).toHaveLength(0)
 	})
 

@@ -28,6 +28,21 @@ export const SOURCES_CONFIG = {
 		},
 	] satisfies DataSource[],
 
+	/**
+	 * ARAM: Mayhem overrides, read from the plain page (allowed by robots.txt like the module),
+	 * then from the copy the `donnees-wiki` workflow publishes. Mayhem keeps every ARAM override
+	 * and adds its own per-champion layer, listed only on this page.
+	 */
+	MAYHEM_SOURCES: [
+		{ name: 'wiki', url: 'https://wiki.leagueoflegends.com/en-us/ARAM:_Mayhem' },
+		{
+			name: 'github-snapshot',
+			url: 'https://raw.githubusercontent.com/CinquinAndy/next-aram-buff-debuff/donnees-wiki/ARAM_Mayhem.html',
+		},
+	] satisfies DataSource[],
+
+	MAYHEM_PAGE: 'https://wiki.leagueoflegends.com/en-us/ARAM:_Mayhem',
+
 	/** Page credited in the footer (CC BY-SA 3.0) */
 	WIKI_MODULE_PAGE: 'https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data',
 

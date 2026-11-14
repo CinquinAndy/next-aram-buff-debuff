@@ -33,6 +33,11 @@ export const getGameModeStats = (
 		return champion.aram
 	}
 
+	// Mayhem keeps every ARAM override and adds its own (see lib/mayhem.ts)
+	if (mode === 'mayhem') {
+		return champion.mayhem?.stats ?? champion.aram
+	}
+
 	// For other modes, get from fullData.gameModes
 	const modeStats = champion.fullData?.gameModes?.[mode]
 	if (!modeStats) {
@@ -71,7 +76,8 @@ export const getAvailableGameModes = (
 ): GameMode[] => {
 	const modes = new Set<GameMode>()
 
-	// ARAM is always available
+	// Mayhem and ARAM are always available: Mayhem falls back to the ARAM values
+	modes.add('mayhem')
 	modes.add('aram')
 
 	Object.values(champions).forEach(champion => {
@@ -149,7 +155,8 @@ export const calculateModificationScoreFromStats = (
 
 		let magnitude
 		if (key === 'ability_haste') {
-			magnitude = Math.abs(value - 1) * statWeight
+			// Flat value (+20, -10): 1 only means "unmodified", it is not the baseline
+			magnitude = Math.abs(value) * statWeight
 		} else {
 			magnitude = Math.abs(value - 1) * 100 * statWeight
 		}

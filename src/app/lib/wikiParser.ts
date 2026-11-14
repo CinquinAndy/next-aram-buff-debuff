@@ -275,6 +275,7 @@ export function parseChampionData(content: string): ChampionData {
 		championData[id] = {
 			id,
 			name: fullData.apiname,
+			displayName: match[1],
 			aram: toAramStats(fullData.gameModes?.aram),
 			fullData,
 		}

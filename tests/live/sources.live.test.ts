@@ -8,6 +8,8 @@
 import { describe, expect, it } from 'vitest'
 import { SOURCES_CONFIG } from '@/app/config/sources'
 import { checkFreshness, MIN_CHAMPIONS, validateChampionData } from '@/app/lib/dataValidation'
+import { MIN_MAYHEM_CHAMPIONS, validateMayhemData } from '@/app/lib/mayhem'
+import { parseMayhemPage } from '@/app/lib/mayhemParser'
 import { dataRevision, patchFromDdragonVersion } from '@/app/lib/patchVersion'
 import { parseChampionData } from '@/app/lib/wikiParser'
 import { HttpService } from '@/app/services/http'
@@ -30,6 +32,16 @@ describe('wiki module page', () => {
 	})
 })
 
+describe('ARAM: Mayhem page', () => {
+	it('parses into overrides that match the champions of the module', async () => {
+		const module = await HttpService.fetchText(SOURCES_CONFIG.DATA_SOURCES[0].url)
+		const page = await HttpService.fetchText(SOURCES_CONFIG.MAYHEM_SOURCES[0].url)
+
+		const validation = validateMayhemData(parseMayhemPage(page.text), parseChampionData(module.text))
+		expect(validation.errors).toEqual([])
+	})
+})
+
 describe.runIf(process.env.PROD_URL)('production site', () => {
 	it('serves the current patch and recent data', async () => {
 		const response = await fetch(`${process.env.PROD_URL}/api/refresh/info`, { cache: 'no-store' })
@@ -40,5 +52,6 @@ describe.runIf(process.env.PROD_URL)('production site', () => {
 		const patch = await currentPatch()
 		expect(info.patchVersion).toBe(patch)
 		expect(checkFreshness(info.dataRevision, patch).error).toBeUndefined()
+		expect(info.mayhem?.championsCount).toBeGreaterThanOrEqual(MIN_MAYHEM_CHAMPIONS)
 	})
 })
