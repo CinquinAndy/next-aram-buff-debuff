@@ -97,6 +97,8 @@ This project uses **Biome** (not ESLint/Prettier). Configuration in `biome.json`
   - Optional authorization via `REFRESH_SECRET` env variable
   - Answers 502 (`success: false`) when every source failed and the stored data was kept
 - **GET /api/refresh/info**: Age, patch, data revision and source of the stored data
+- **GET /api/champions**: every champion with its ARAM and Mayhem values (`toPublicChampions`, `src/app/lib/publicApi.ts`),
+  CORS open, read by the desktop client. Bump `PUBLIC_API_VERSION` on a breaking change: the client refuses unknown versions
 
 ### Tests
 
@@ -105,6 +107,17 @@ This project uses **Biome** (not ESLint/Prettier). Configuration in `biome.json`
 - `pnpm test:live`: real network (wiki, Data Dragon, and the production site when `PROD_URL` is set);
   fails when the data is empty or more than 2 patches behind. Run daily by `donnees-wiki.yml`
 - CI (`.github/workflows/ci.yml`): frozen install, `pnpm typecheck`, `pnpm test`, `pnpm build`
+
+### Desktop client (`desktop/`)
+
+Tauri v2 app that reads the champion select of the local League client (LCU API, read-only) and shows the balance
+of your champion, your team and the ARAM bench. See `desktop/README.md`.
+- `desktop/lcu/`: Rust crate, client discovery (`LeagueClientUx` arguments, then `lockfile`) and JSON parsing; `cargo test`
+- `desktop/src-tauri/`: polls every 1.5 s, emits `client-state`; `load_champions` fetches `/api/champions` with an offline copy
+- `desktop/src/`: vanilla TypeScript + Vite; `pnpm dev` runs a demo mode in a browser (no League client needed)
+- Excluded from the site's `tsconfig.json`; CI job `client-bureau` builds it on Ubuntu (WebKitGTK packages)
+- Releases: tag `desktop-vX.Y.Z` → `.github/workflows/desktop-release.yml` (Windows, macOS), updater key in Vaultwarden
+  `app/aram-desktop/tauri-updater-key` (+ `-password`), public key in `tauri.conf.json`
 
 ### Key Components
 

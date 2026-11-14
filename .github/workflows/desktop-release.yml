@@ -1,0 +1,83 @@
+name: Client de bureau (release)
+
+# Construit les installeurs du client de bureau (desktop/) et les publie dans une release GitHub,
+# avec le latest.json signé que lit la mise à jour automatique de l'app.
+# Se lance sur un tag desktop-vX.Y.Z, qui doit correspondre à la version de desktop/src-tauri/tauri.conf.json.
+# Secrets du dépôt : TAURI_SIGNING_PRIVATE_KEY et TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+# (Vaultwarden : app/aram-desktop/tauri-updater-key et tauri-updater-key-password).
+on:
+  push:
+    tags: ['desktop-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  verifier-version:
+    name: Tag et version de l'app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Le tag correspond à tauri.conf.json
+        run: |
+          version=$(jq -r .version desktop/src-tauri/tauri.conf.json)
+          if [ "${GITHUB_REF_NAME}" != "desktop-v${version}" ]; then
+            echo "Le tag ${GITHUB_REF_NAME} ne correspond pas à la version ${version} de tauri.conf.json"
+            exit 1
+          fi
+
+  installeurs:
+    name: Installeur ${{ matrix.nom }}
+    needs: verifier-version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nom: Windows
+            os: windows-latest
+            args: ''
+          - nom: macOS (Apple Silicon)
+            os: macos-latest
+            args: --target aarch64-apple-darwin
+          - nom: macOS (Intel)
+            os: macos-latest
+            args: --target x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop -> target
+      - run: pnpm install --frozen-lockfile
+        working-directory: desktop
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: desktop
+          tauriScript: pnpm tauri
+          args: ${{ matrix.args }} --config src-tauri/tauri.release.conf.json
+          tagName: ${{ github.ref_name }}
+          releaseName: ARAM Balance Checker ${{ github.ref_name }}
+          releaseBody: |
+            Client de bureau : affiche les modificateurs ARAM et ARAM: Mayhem des champions de ta sélection.
+            Windows : télécharge le fichier `.msi` ou `-setup.exe`. macOS : le `.dmg` (Apple Silicon : aarch64, Intel : x64).
+            L'app n'est pas signée : Windows affiche un avertissement SmartScreen au premier lancement
+            (« Informations complémentaires » puis « Exécuter quand même »). Voir desktop/README.md.
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
