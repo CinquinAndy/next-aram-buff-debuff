@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>ARAM Balance Checker</title>
+	</head>
+	<body>
+		<header class="topbar">
+			<div class="brand">
+				<strong>ARAM Balance Checker</strong>
+				<span id="client-status" class="client-status" data-status="noClient">Looking for the League client…</span>
+			</div>
+			<div class="controls">
+				<div class="modes" role="group" aria-label="Balance">
+					<button id="mode-auto" type="button" title="Follow the queue of the League client">Auto</button>
+					<button data-mode="mayhem" type="button">Mayhem</button>
+					<button data-mode="aram" type="button">ARAM</button>
+				</div>
+				<input id="search" type="search" placeholder="Search a champion…" autocomplete="off" />
+			</div>
+		</header>
+
+		<div id="demo-bar" class="demo-bar" hidden><span>Demo:</span></div>
+		<div id="update" class="update" hidden></div>
+		<div id="error" class="error" hidden></div>
+
+		<main>
+			<details id="mayhem-globals" class="globals" hidden>
+				<summary>Every champion in Mayhem also gets</summary>
+				<ul></ul>
+			</details>
+			<div id="content"><p class="empty">Loading the champions…</p></div>
+		</main>
+
+		<footer>
+			<span id="data-status"></span>
+			<span>
+				Data: League of Legends Wiki (CC BY-SA 3.0). Not endorsed by Riot Games.
+			</span>
+		</footer>
+		<script type="module" src="/src/main.ts"></script>
+	</body>
+</html>

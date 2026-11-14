@@ -1,0 +1,14 @@
+{
+  "gameData": {
+    "gameId": 7000000001,
+    "queue": {
+      "description": "ARAM: Mayhem",
+      "detailedDescription": "",
+      "gameMode": "KIWI",
+      "id": 2400,
+      "mapId": 12,
+      "name": "ARAM: Mayhem"
+    }
+  },
+  "phase": "ChampSelect"
+}
