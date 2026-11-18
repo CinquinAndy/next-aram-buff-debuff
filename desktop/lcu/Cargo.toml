@@ -9,7 +9,7 @@ license.workspace = true
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sysinfo = { version = "=0.38.4", default-features = false, features = ["system"] }
+sysinfo = { version = "=0.40.4", default-features = false, features = ["system"] }
 thiserror = "2"
 base64 = "0.22"
 tokio = { version = "1", features = ["rt"] }
