@@ -1,111 +1,12 @@
 {
   "source": "https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data",
-  "sourceUpdatedAt": "2026-11-06T13:27:45.000Z",
-  "dataRevision": "V26.22",
+  "sourceUpdatedAt": "2026-11-17T22:50:10.000Z",
+  "dataRevision": "V26.23",
   "championsCount": 173,
   "aramChangedCount": 134,
   "mayhem": {
     "source": "https://wiki.leagueoflegends.com/en-us/ARAM:_Mayhem",
-    "sourceUpdatedAt": "2026-11-17T02:35:42.000Z",
-    "championsCount": 71,
-    "wikiConflicts": [
-      {
-        "champion": "Annie",
-        "stat": "dmg_taken",
-        "module": 1.05,
-        "mayhemPageFrom": 0.95
-      },
-      {
-        "champion": "Ivern",
-        "stat": "shielding",
-        "module": 0.9,
-        "mayhemPageFrom": 0.8
-      },
-      {
-        "champion": "Janna",
-        "stat": "shielding",
-        "module": 1,
-        "mayhemPageFrom": 0.95
-      },
-      {
-        "champion": "Locke",
-        "stat": "dmg_dealt",
-        "module": 1.15,
-        "mayhemPageFrom": 1
-      },
-      {
-        "champion": "Mordekaiser",
-        "stat": "dmg_taken",
-        "module": 1,
-        "mayhemPageFrom": 1.02
-      },
-      {
-        "champion": "Renata Glasc",
-        "stat": "shielding",
-        "module": 1,
-        "mayhemPageFrom": 0.8
-      },
-      {
-        "champion": "Samira",
-        "stat": "dmg_taken",
-        "module": 1,
-        "mayhemPageFrom": 1.05
-      },
-      {
-        "champion": "Shyvana",
-        "stat": "dmg_taken",
-        "module": 0.95,
-        "mayhemPageFrom": 1.05
-      },
-      {
-        "champion": "Soraka",
-        "stat": "healing",
-        "module": 1,
-        "mayhemPageFrom": 1.05
-      },
-      {
-        "champion": "Teemo",
-        "stat": "ability_haste",
-        "module": -15,
-        "mayhemPageFrom": -10
-      },
-      {
-        "champion": "Varus",
-        "stat": "dmg_taken",
-        "module": 1,
-        "mayhemPageFrom": 1.05
-      },
-      {
-        "champion": "Vayne",
-        "stat": "dmg_dealt",
-        "module": 1,
-        "mayhemPageFrom": 1.05
-      },
-      {
-        "champion": "Vladimir",
-        "stat": "dmg_dealt",
-        "module": 1,
-        "mayhemPageFrom": 0.95
-      },
-      {
-        "champion": "Vladimir",
-        "stat": "dmg_taken",
-        "module": 1,
-        "mayhemPageFrom": 1.05
-      },
-      {
-        "champion": "Vladimir",
-        "stat": "healing",
-        "module": 1,
-        "mayhemPageFrom": 0.9
-      },
-      {
-        "champion": "Ziggs",
-        "stat": "dmg_dealt",
-        "module": 0.92,
-        "mayhemPageFrom": 0.87
-      }
-    ]
+    "error": "Unreadable stat lines: Yasuo: \"Total attack speed increase changed to 0% from +2.5%.\""
   },
   "license": "CC BY-SA 3.0, League of Legends Wiki"
 }
