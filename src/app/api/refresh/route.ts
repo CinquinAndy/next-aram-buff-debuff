@@ -6,19 +6,21 @@
  */
 
 import { NextResponse } from 'next/server'
-import { WikiDataService } from '@/app/services/WikiDataService'
+import { checkRefreshAuth } from '@/app/lib/refreshAuth'
 import { PocketBaseService } from '@/app/services/PocketBaseService'
+import { WikiDataService } from '@/app/services/WikiDataService'
 
 export async function POST(request: Request) {
 	try {
 		console.info('API: Refresh data endpoint called')
 
-		// Optional: Add authentication/authorization here
-		// For example, check for a secret token in headers
-		const authHeader = request.headers.get('authorization')
-		const refreshSecret = process.env.REFRESH_SECRET
-
-		if (refreshSecret && authHeader !== `Bearer ${refreshSecret}`) {
+		// Closed when REFRESH_SECRET is missing: an unset variable must not open the scrape to everyone
+		const auth = checkRefreshAuth(request.headers.get('authorization'), process.env.REFRESH_SECRET)
+		if (auth === 'not-configured') {
+			console.error('API: Refresh refused, REFRESH_SECRET is not set')
+			return NextResponse.json({ error: 'Refresh is not configured' }, { status: 503 })
+		}
+		if (auth === 'unauthorized') {
 			console.warn('API: Unauthorized refresh attempt')
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 		}
@@ -89,7 +91,7 @@ export async function GET() {
 		usage: {
 			method: 'POST',
 			headers: {
-				authorization: 'Bearer YOUR_SECRET (optional)',
+				authorization: 'Bearer REFRESH_SECRET (required)',
 			},
 		},
 	})

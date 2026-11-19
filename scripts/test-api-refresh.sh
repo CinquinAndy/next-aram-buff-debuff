@@ -14,8 +14,14 @@ fi
 echo "📡 Calling POST /api/refresh..."
 echo ""
 
+if [ -z "$REFRESH_SECRET" ]; then
+    echo "⚠️  REFRESH_SECRET is not set: export the same value as the dev server's .env"
+    exit 1
+fi
+
 response=$(curl -s -X POST http://localhost:3000/api/refresh \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $REFRESH_SECRET" \
     -w "\n%{http_code}")
 
 # Extract response body and status code

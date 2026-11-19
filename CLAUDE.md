@@ -94,7 +94,8 @@ This project uses **Biome** (not ESLint/Prettier). Configuration in `biome.json`
 ### API Routes
 
 - **POST /api/refresh**: Manually trigger data refresh from the sources
-  - Optional authorization via `REFRESH_SECRET` env variable
+  - Requires `authorization: Bearer <REFRESH_SECRET>` (constant-time check, `src/app/lib/refreshAuth.ts`);
+    answers 503 when `REFRESH_SECRET` is not set, 401 when the header is wrong
   - Answers 502 (`success: false`) when every source failed and the stored data was kept
 - **GET /api/refresh/info**: Age, patch, data revision and source of the stored data
 - **GET /api/champions**: every champion with its ARAM and Mayhem values (`toPublicChampions`, `src/app/lib/publicApi.ts`),
@@ -170,7 +171,7 @@ Champion name handling has special cases:
 - Environment variables:
   - `POCKETBASE_URL`: PocketBase instance URL
   - `POCKETBASE_TOKEN`: Admin authentication token
-  - `REFRESH_SECRET`: Optional secret for refresh API authorization
+  - `REFRESH_SECRET`: Required secret for the refresh API (route closed without it)
 
 ## Path Aliases
 

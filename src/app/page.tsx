@@ -21,7 +21,8 @@ async function ChampionDataFetcher() {
 							refresh endpoint:
 						</p>
 						<code className="block bg-yellow-100 p-3 rounded text-sm">
-							curl -X POST {typeof window !== 'undefined' ? window.location.origin : ''}/api/refresh
+							curl -X POST {typeof window !== 'undefined' ? window.location.origin : ''}/api/refresh -H
+							&quot;authorization: Bearer $REFRESH_SECRET&quot;
 						</code>
 					</div>
 				</div>
