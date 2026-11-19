@@ -79,7 +79,8 @@ POCKETBASE_TOKEN=your_admin_token_here
 ### 3. Populate PocketBase (First Time)
 ```bash
 # Option A: Using the API (recommended)
-curl -X POST http://localhost:3000/api/refresh
+curl -X POST http://localhost:3000/api/refresh \
+  -H "Authorization: Bearer $REFRESH_SECRET"
 
 # Option B: Using the script directly
 bun scripts/test-scraping.ts
@@ -134,12 +135,9 @@ Triggers wiki scraping and updates PocketBase
 
 **Usage:**
 ```bash
-# Basic
-curl -X POST http://localhost:3000/api/refresh
-
-# With authentication (if REFRESH_SECRET is set)
+# REFRESH_SECRET is required: without it the route answers 503
 curl -X POST http://localhost:3000/api/refresh \
-  -H "Authorization: Bearer YOUR_SECRET"
+  -H "Authorization: Bearer $REFRESH_SECRET"
 ```
 
 **Response (Success):**
@@ -206,7 +204,8 @@ npm run test:scraping
 ./scripts/test-api-refresh.sh
 
 # Or manually
-curl -X POST http://localhost:3000/api/refresh
+curl -X POST http://localhost:3000/api/refresh \
+  -H "Authorization: Bearer $REFRESH_SECRET"
 ```
 
 ### Test Empty Cache Handling
@@ -227,21 +226,24 @@ cp .env.example .env
 # Edit .env
 npm run dev
 # Visit localhost:3000 → See "Cache empty" error
-curl -X POST http://localhost:3000/api/refresh
+curl -X POST http://localhost:3000/api/refresh \
+  -H "Authorization: Bearer $REFRESH_SECRET"
 # Refresh page → See champion data
 ```
 
 ### Scenario 2: Update Data
 ```bash
 # A new LoL patch came out
-curl -X POST http://localhost:3000/api/refresh
+curl -X POST http://localhost:3000/api/refresh \
+  -H "Authorization: Bearer $REFRESH_SECRET"
 # Data automatically refreshed in PocketBase
 ```
 
 ### Scenario 3: Automated Updates
 ```bash
 # Setup cron job to refresh daily
-0 0 * * * curl -X POST https://your-domain.com/api/refresh
+0 0 * * * curl -X POST https://your-domain.com/api/refresh \
+  -H "Authorization: Bearer $REFRESH_SECRET"
 ```
 
 ## Troubleshooting
@@ -255,12 +257,15 @@ curl -X POST http://localhost:3000/api/refresh
 2. The `donnees-wiki` branch copy is recent (workflow "Données du wiki")
 3. See SCRAPING_GUIDE.md
 
+### 503 on /api/refresh
+**Cause:** `REFRESH_SECRET` is not set on the server: the route stays closed until it is
+
 ### Page loads slowly
 **Cause:** Images downloading on first load
 **Solution:** Wait for initial image download, subsequent loads are fast
 
 ### 401 Unauthorized on /api/refresh
-**Cause:** REFRESH_SECRET is set but not provided
+**Cause:** missing or wrong `Authorization: Bearer <REFRESH_SECRET>` header
 **Solution:**
 ```bash
 curl -X POST http://localhost:3000/api/refresh \
@@ -288,9 +293,8 @@ curl -X POST http://localhost:3000/api/refresh \
 - ✅ Admin token for full access
 
 ### Refresh Endpoint
-- Optional: Set `REFRESH_SECRET` in `.env`
-- Recommended for production to prevent abuse
-- Not required for development
+- Required: set `REFRESH_SECRET` in `.env` (dev included); without it the route answers 503
+- Sent as `Authorization: Bearer <REFRESH_SECRET>`, compared in constant time
 
 ## Production Deployment
 
@@ -329,7 +333,7 @@ npm run init:pocketbase  # Initialize PocketBase
 
 ## Next Steps
 
-1. ✅ Populate PocketBase: `curl -X POST localhost:3000/api/refresh`
+1. ✅ Populate PocketBase: `curl -X POST localhost:3000/api/refresh -H "Authorization: Bearer $REFRESH_SECRET"`
 2. ✅ Visit homepage: `http://localhost:3000`
 3. ✅ Setup automated refresh (optional)
 4. ✅ Deploy to production
@@ -337,20 +341,17 @@ npm run init:pocketbase  # Initialize PocketBase
 ## UI Features
 
 ### RefreshPopup Component
-A bottom-right popup that helps users keep data fresh:
+A popup that shows how fresh the data is:
 
 **Features:**
 - ✅ Auto-opens if data is older than 24 hours
 - ✅ Shows data age and current patch version
-- ✅ One-click refresh button
 - ✅ Orange/pulsing animation when data is stale
-- ✅ Success/error handling with auto-reload
 - ✅ Minimal when closed (just a button icon)
 
 **Usage:**
-- Click the refresh icon to open the popup
-- Click "Refresh Data Now" to trigger `/api/refresh`
-- Page automatically reloads after successful refresh
+- Click the icon to open the popup
+- Shows when the data was last refreshed; the refresh itself happens automatically (no public button)
 
 ## Support
 

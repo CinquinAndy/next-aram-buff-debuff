@@ -26,8 +26,8 @@ La révision des données est le plus récent `["changes"]` du module.
 
 - Automatique : une visite de la page quand les données ont plus de 24 h lance un rafraîchissement en
   arrière-plan (au plus un essai par heure après un échec).
-- Manuel : `curl -X POST https://aram-balances-checker.forhives.fr/api/refresh`
-  (en-tête `authorization: Bearer …` si `REFRESH_SECRET` est posé). Réponse 502 si aucune source n'a donné
+- Manuel : `curl -X POST https://aram-balances-checker.forhives.fr/api/refresh -H "authorization: Bearer $REFRESH_SECRET"`.
+  Sans `REFRESH_SECRET` sur le serveur, la route répond 503 ; avec un mauvais en-tête, 401. Réponse 502 si aucune source n'a donné
   de données valides.
 - État : `GET /api/refresh/info` (patch, révision, source, date, nombre de champions).
 

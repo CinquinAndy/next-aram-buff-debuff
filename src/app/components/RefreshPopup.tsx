@@ -11,10 +11,7 @@ interface DataInfo {
 
 export default function RefreshPopup() {
 	const [isOpen, setIsOpen] = useState(false)
-	const [isRefreshing, setIsRefreshing] = useState(false)
 	const [dataInfo, setDataInfo] = useState<DataInfo | null>(null)
-	const [error, setError] = useState<string | null>(null)
-	const [success, setSuccess] = useState<string | null>(null)
 
 	const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
 
@@ -42,39 +39,6 @@ export default function RefreshPopup() {
 		}
 	}
 
-	const handleRefresh = async () => {
-		setIsRefreshing(true)
-		setError(null)
-		setSuccess(null)
-
-		try {
-			const response = await fetch('/api/refresh', {
-				method: 'POST',
-			})
-
-			const data = await response.json()
-
-			if (response.ok) {
-				setSuccess(
-					`✅ Data refreshed! ${data.data.championsCount} champions updated to patch ${data.data.patchVersion}`
-				)
-				checkDataAge()
-				// Refresh page after 2 seconds
-				setTimeout(() => {
-					window.location.reload()
-				}, 2000)
-			} else {
-				setError(data.error || 'Failed to refresh data')
-			}
-		} catch (error) {
-			setError(
-				error instanceof Error ? error.message : 'Failed to refresh data'
-			)
-		} finally {
-			setIsRefreshing(false)
-		}
-	}
-
 	const formatAge = (ms: number): string => {
 		const hours = Math.floor(ms / (1000 * 60 * 60))
 		if (hours < 24) return `${hours}h ago`
@@ -94,7 +58,7 @@ export default function RefreshPopup() {
 						? 'bg-orange-500 hover:bg-orange-600 animate-pulse'
 						: 'bg-blue-500 hover:bg-blue-600'
 				}`}
-				title="Refresh data"
+				title="Data freshness"
 			>
 				<RefreshCw className="w-6 h-6 text-white" />
 				{isDataOld && (
@@ -111,7 +75,7 @@ export default function RefreshPopup() {
 					<RefreshCw
 						className={`w-5 h-5 ${isDataOld ? 'text-orange-500' : 'text-blue-500'}`}
 					/>
-					<h3 className="font-semibold text-gray-900">Data Refresh</h3>
+					<h3 className="font-semibold text-gray-900">Data freshness</h3>
 				</div>
 				<button
 					type="button"
@@ -143,43 +107,10 @@ export default function RefreshPopup() {
 					</div>
 				)}
 
+				{/* No refresh button: POST /api/refresh needs REFRESH_SECRET, which a visitor's browser must not hold */}
 				<p className="text-sm text-gray-600">
-					Click below to fetch the latest ARAM champion data from the League of
-					Legends wiki.
-				</p>
-
-				{error && (
-					<div className="bg-red-50 border border-red-200 rounded p-2 text-sm text-red-700">
-						{error}
-					</div>
-				)}
-
-				{success && (
-					<div className="bg-green-50 border border-green-200 rounded p-2 text-sm text-green-700">
-						{success}
-					</div>
-				)}
-
-				<button
-					type="button"
-					onClick={handleRefresh}
-					disabled={isRefreshing}
-					className={`w-full py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-						isRefreshing
-							? 'bg-gray-300 cursor-not-allowed'
-							: isDataOld
-								? 'bg-orange-500 hover:bg-orange-600 text-white'
-								: 'bg-blue-500 hover:bg-blue-600 text-white'
-					}`}
-				>
-					<RefreshCw
-						className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
-					/>
-					{isRefreshing ? 'Refreshing...' : 'Refresh Data Now'}
-				</button>
-
-				<p className="text-xs text-gray-500 text-center">
-					This will scrape the wiki and update PocketBase (~15s)
+					The ARAM data from the League of Legends wiki refreshes automatically when it is more than 24h old
+					and someone opens the site.
 				</p>
 			</div>
 		</div>
